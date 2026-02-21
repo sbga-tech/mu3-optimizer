@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AssemblyName>Assembly-CSharp.Steroid.mm</AssemblyName>
+        <Version>0.0.1</Version>
+        <TargetFramework>net35</TargetFramework>
+        <Company>oshinop</Company>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <Platforms>x64</Platforms>
+        <Configurations>Debug;Release</Configurations>
+        <NoWarn>IDE0044,IDE0051,IDE0052,IDE1006,CS0414,CS0649,CS0626</NoWarn>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>full</DebugType>
+        <Optimize>false</Optimize>
+        <OutputPath>bin\Debug\</OutputPath>
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <DebugType>pdbonly</DebugType>
+        <Optimize>true</Optimize>
+        <OutputPath>bin\Release\</OutputPath>
+        <DefineConstants>TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="mscorlib"><HintPath>..\Mu3Reference\mscorlib.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>..\Mu3Reference\UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>..\Mu3Reference\UnityEngine.UI.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\Mu3Reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
+        <Reference Include="AMDaemon.NET"><HintPath>..\Mu3Reference\AMDaemon.NET.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp">
+          <HintPath>..\Mu3Reference\Assembly-CSharp.dll</HintPath>
+        </Reference>
+        <PackageReference Include="monomod" Version="20.5.21.5" />
+        <ProjectReference Include="..\Mu3Reference\Assembly-CSharp_unpacked\Assembly-CSharp_unpacked.csproj" />
+    </ItemGroup>
+</Project>
