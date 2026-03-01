@@ -18,5 +18,6 @@ mu3.ini
 NoImageBloom=1
 NoEffectCamera=1
 BoostLoginRequests=1
+NoUICameraDuringPlay=1
 ```
 

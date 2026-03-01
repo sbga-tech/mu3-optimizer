@@ -25,6 +25,8 @@ static partial class MonoModRules
         MonoModRule.Flag.Set("NoEffectCamera", noEffectCamera);
         bool boostLoginRequests = ini.getIntValue("Optimization", "BoostLoginRequests", 1) != 0;
         MonoModRule.Flag.Set("BoostLoginRequests", boostLoginRequests);
+        bool noUiCameraDuringPlay = ini.getIntValue("Optimization", "NoUICameraDuringPlay", 1) != 0;
+        MonoModRule.Flag.Set("NoUICameraDuringPlay", noUiCameraDuringPlay);
     }
 
     //Ini file from MU3 which get rid of premature ref to UnityEngine
