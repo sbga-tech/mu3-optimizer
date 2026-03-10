@@ -17,7 +17,7 @@
         <DebugType>full</DebugType>
         <Optimize>false</Optimize>
         <OutputPath>bin\Debug\</OutputPath>
-        <DefineConstants>DEBUG;TRACE</DefineConstants>
+        <DefineConstants>DEBUG;TRACE;ENABLE_PROFILER</DefineConstants>
         <ErrorReport>prompt</ErrorReport>
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
@@ -36,10 +36,7 @@
         <Reference Include="UnityEngine.UI"><HintPath>..\Mu3Reference\UnityEngine.UI.dll</HintPath></Reference>
         <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\Mu3Reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
         <Reference Include="AMDaemon.NET"><HintPath>..\Mu3Reference\AMDaemon.NET.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp">
-          <HintPath>..\Mu3Reference\Assembly-CSharp.dll</HintPath>
-        </Reference>
+        <Reference Include="Assembly-CSharp"><HintPath>..\Mu3Reference\Assembly-CSharp.dll</HintPath></Reference>
         <PackageReference Include="monomod" Version="20.5.21.5" />
-        <ProjectReference Include="..\Mu3Reference\Assembly-CSharp_unpacked\Assembly-CSharp_unpacked.csproj" />
     </ItemGroup>
 </Project>

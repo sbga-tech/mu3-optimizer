@@ -152,11 +152,11 @@ public class patch_Scene_25_Login : Scene_25_Login
     [MonoModReplace]
     private void updateProgressIndicatorState()
     {
-        SystemUI instance = SingletonMonoBehaviour<SystemUI>.instance;
+        var instance = SingletonMonoBehaviour<SystemUI>.instance;
         if (instance == null)
             return;
-        bool flag1 = _isLoggingIn;
-        bool flag2 = instance.isProgressIndicator();
+        var flag1 = _isLoggingIn;
+        var flag2 = instance.isProgressIndicator();
         if (flag1 && !flag2)
         {
             instance.showProgressIndicator();
@@ -240,9 +240,9 @@ public class patch_Scene_25_Login : Scene_25_Login
     [MonoModReplace]
     private void GetUserRivalMusic_Proc()
     {
-        bool allDone = true;
+        var allDone = true;
     
-        for (int i = 0; i < packets_.Count; i++)
+        for (var i = 0; i < packets_.Count; i++)
         {
             if (rivalMusicFetched_[i]) continue; // Skip completed packets
         
@@ -308,10 +308,10 @@ public class patch_Scene_25_Login : Scene_25_Login
         packets_ = new List<Packet>();
         tradeItemsFetched_ = new List<bool>();
         
-        OperationManager instance = Singleton<OperationManager>.instance;
-        List<int> list = new List<int>();
-        ICollection<ChapterData> allChapterData = SingletonStateMachine<DataManager, DataManager.EState>.instance.allChapterData;
-        foreach (ChapterData item in allChapterData)
+        var instance = Singleton<OperationManager>.instance;
+        var list = new List<int>();
+        var allChapterData = SingletonStateMachine<DataManager, DataManager.EState>.instance.allChapterData;
+        foreach (var item in allChapterData)
         {
             if ((!item.isEventChapter || instance.isActiveEventChapterId(item.id)) && item.isSelectable)
             {
@@ -319,9 +319,9 @@ public class patch_Scene_25_Login : Scene_25_Login
             }
         }
         list.Sort();
-        int num = list[0];
-        int num2 = num;
-        foreach (int item2 in list)
+        var num = list[0];
+        var num2 = num;
+        foreach (var item2 in list)
         {
             if (item2 > num2 + 1)
             {
@@ -338,9 +338,9 @@ public class patch_Scene_25_Login : Scene_25_Login
     [MonoModReplace]
     private void GetUserTradeItem_Proc()
     {
-        bool allDone = true;
+        var allDone = true;
     
-        for (int i = 0; i < packets_.Count; i++)
+        for (var i = 0; i < packets_.Count; i++)
         {
             if (tradeItemsFetched_[i]) continue;
         
@@ -544,7 +544,7 @@ public class patch_Scene_25_Login : Scene_25_Login
         {
             if (_isRunning)
             {
-                long elapsed = DateTime.Now.Ticks - _startTicks;
+                var elapsed = DateTime.Now.Ticks - _startTicks;
                 _accumulatedTicks += elapsed;
                 _isRunning = false;
             }
@@ -554,7 +554,7 @@ public class patch_Scene_25_Login : Scene_25_Login
         {
             get
             {
-                long currentElapsed = _accumulatedTicks;
+                var currentElapsed = _accumulatedTicks;
                 if (_isRunning)
                 {
                     currentElapsed += DateTime.Now.Ticks - _startTicks;
@@ -582,7 +582,7 @@ public class patch_Scene_25_Login : Scene_25_Login
 
         var initMethod = _initMethods[state];
 
-        int startingMode = mode_.get();
+        var startingMode = mode_.get();
 
         if (initMethod != null)
         {
@@ -606,7 +606,7 @@ public class patch_Scene_25_Login : Scene_25_Login
             }
         }
 
-        int modeAfterInit = mode_.get();
+        var modeAfterInit = mode_.get();
         if (modeAfterInit != startingMode)
         {
             mode_.set((State)startingMode);
@@ -668,7 +668,7 @@ public class patch_Scene_25_Login : Scene_25_Login
             {
                 procMethod(this);
 
-                int currentMode = mode_.get();
+                var currentMode = mode_.get();
                 if (currentMode != startingMode)
                 {
                     mode_.set((State)startingMode);

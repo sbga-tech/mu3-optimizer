@@ -1,99 +1,147 @@
-﻿using MonoMod;
+using MonoMod;
+using MonoMod.InlineRT;
 using UnityEngine;
-using UnityEngine.PostProcessing;
 
 namespace MU3.Battle;
 
-[MonoModIfFlag("NoEffectCamera")]
+[MonoModIfFlag("BetterRendering")]
 public class patch_BattleCamera : BattleCamera
 {
-    [MonoModIgnore]
-    private Camera _mainCamera;
 
-    [MonoModIgnore] private Camera _postStageCamera;
-    [MonoModIgnore] private Camera _stageMergeCamera;
+    [MonoModIgnore] private Camera _mainCamera;
 
-    
-    [MonoModIgnore] private GameObject _postStageBillboard;
-    [MonoModIgnore] private GameObject _stageMergeBillboard;
-    
-    [MonoModIgnore] private GameObject _stageBillboard;
-    
     [MonoModIgnore] private Animator _postStageCameraAnimator;
     [MonoModIgnore] private AnimationEventHandler _postStageCameraAnimationEventHandler;
 
-
-    [MonoModIgnore] private Rect _postStageCameraRect;
-
     [MonoModIgnore] private RenderTexture _preStageRenderTexture;
-    
-    [MonoModIgnore]
-    private extern void checkRenderTextureSize(ref RenderTexture renderTexture, int width, int height, int depth,
-        RenderTextureFormat format);
-    
-    public extern void orig_setupStageCamera(GameObject stageObject, float renderTragetScale);
 
-    public new void setupStageCamera(GameObject stageObject, float renderTragetScale)
-    {
-        orig_setupStageCamera(stageObject, renderTragetScale);
-        if (_stageBillboard != null)
-        {
-            _stageBillboard.layer = 0; //make it directly rendered in the default layer instead of going thru 2 passes
-        }
+    [MonoModIgnore] private RenderTexture _stageRenderTexutre;
+    [MonoModIgnore] private RenderTexture _postStageRenderTexture;
 
-        // No observable difference in performance with or without this
-         
-        // Camera componentInChildren = stageObject.GetComponentInChildren<Camera>();
-        // if (componentInChildren == null)
-        // {
-        //     return;
-        // }
-        //
-        // PostProcessingBehaviour ppb = componentInChildren.gameObject.GetComponent<PostProcessingBehaviour>();
-        // if (ppb == null)
-        // {
-        //     return;
-        // }
-        //
-        // Destroy(ppb);
-    }
-    
+    private StageCompositor _compositor;
+
     [MonoModReplace]
     private void createPostStageCamera(Transform parent, Camera nextCamera)
     {
-        if (!(_mainCamera == null))
+        if (_mainCamera == null)
+            return;
+
+        // Stub billboard — stage content is drawn via CommandBuffer, not a quad
+
+        // _postStageBillboard = new GameObject("PostStageBillboardStub");
+        // _postStageBillboard.transform.SetParent(nextCamera.transform, false);
+
+        // Instantiate the EffectCamera prefab purely for its Animator + AnimationEventHandler.
+        // The Camera component is disabled (no rendering).
+        // if (_effectCameraPrefab != null)
+        // {
+        //     GameObject effectObj = Object.Instantiate(_effectCameraPrefab, parent, false);
+        //     _postStageCamera = effectObj.GetComponentInChildren<Camera>();
+        //     if (_postStageCamera != null)
+        //         _postStageCamera.enabled = false;
+        //     _postStageCameraAnimator = effectObj.GetComponentInChildren<Animator>();
+        //     if (_postStageCameraAnimator != null)
+        //         _postStageCameraAnimationEventHandler =
+        //             _postStageCameraAnimator.GetComponent<AnimationEventHandler>();
+        // }
+
+        if (_postStageCameraAnimator == null)
         {
-            _postStageBillboard = new GameObject("PostStageBillboardStub");
-            _postStageBillboard.transform.SetParent(nextCamera.transform, false);
-            GameObject camObj = new GameObject("PostStageCameraStub");
-            _postStageCamera = camObj.AddComponent<Camera>();
-            _postStageCameraAnimator = camObj.AddComponent<Animator>();
-            _postStageCameraAnimationEventHandler = camObj.AddComponent<AnimationEventHandler>();
-            _postStageCamera.transform.SetParent(parent, false);
-            _postStageCamera.enabled = false;
+            var animatorStub = new GameObject("PostStageCameraAnimatorStub");
+            _postStageCameraAnimator = animatorStub.AddComponent<Animator>();
+            _postStageCameraAnimationEventHandler = animatorStub.AddComponent<AnimationEventHandler>();
+            animatorStub.transform.SetParent(parent, false);
+        }
+
+        // MainCamera keeps its original culling mask (excludes L27/L30).
+        // The StageCompositor helper camera renders L27 and L30 separately.
+        _mainCamera.clearFlags = CameraClearFlags.Depth;
+        
+        _compositor = _mainCamera.gameObject.AddComponent<StageCompositor>();
+        
+        _compositor.Initialize(_mainCamera, _stageRenderTexutre, _postStageRenderTexture);
+        
+    }
+    
+    private void DisableShadows()
+    {
+        var lights = FindObjectsOfType<Light>();
+        foreach (var light in lights)
+        {
+            light.shadows = LightShadows.None;
+        }
+            
+        var renders = FindObjectsOfType<Renderer>();
+        foreach (var renderer in renders)
+        {
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
     }
-
-    [MonoModIgnore]
-    private extern void faceBillboardToCamera(Camera camera, GameObject billboard, Rect rect, Vector2 screenSize);
     
     [MonoModReplace]
-    private void faceBillboardsToCamera()
+    private GameObject makeBillboard(Camera camera, Texture texture, int layer, string name)
     {
-        faceBillboardToCamera(_mainCamera, _stageBillboard, _postStageCameraRect, MU3.Sys.Const.ScreenSize);
+        return null;
     }
-    
+
     [MonoModReplace]
     private void createStageMergeCamera(Transform parent, Camera nextCamera)
     {
-        if (!(_mainCamera == null))
-        {
-            _postStageBillboard = new GameObject("StageMergeBillboardStub");
-            _postStageBillboard.transform.SetParent(nextCamera.transform, false);
-            
-            _stageMergeCamera = new GameObject("StageMergeCameraStub").AddComponent<Camera>();
-            _stageMergeCamera.transform.SetParent(parent, false);
-            _stageMergeCamera.enabled = false;
-        }
+    }
+
+    public extern void orig_setupStageCamera(GameObject stageObject, float renderTargetScale);
+
+    public new void setupStageCamera(GameObject stageObject, float renderTargetScale)
+    {
+        orig_setupStageCamera(stageObject, renderTargetScale);
+
+        // Ensure _stageRenderTexutre is created (normally done by createStageMergeCamera)
+        if (_stageRenderTexutre != null && !_stageRenderTexutre.IsCreated())
+            _stageRenderTexutre.Create();
+
+        // Feed stage RT to the CommandBuffer compositor
+        if (_compositor != null && _preStageRenderTexture != null)
+            _compositor.SetStageTexture(_preStageRenderTexture);
+
+    }
+
+    public extern void orig_destroyStageCamera();
+
+    public new void destroyStageCamera()
+    {
+        orig_destroyStageCamera();
+
+        if (_compositor != null)
+            _compositor.ClearStageTexture();
+    }
+
+    public extern void orig_Execute_StartCutscene();
+
+    private void Execute_StartCutscene()
+    {
+        orig_Execute_StartCutscene();
+
+        if (_compositor != null)
+            _compositor.ForceRenderNextFrame();
+    }
+
+    public extern void orig_Leave_StartCutscene();
+    
+    private void Leave_StartCutscene()
+    {
+        orig_Leave_StartCutscene();
+        if (RenderingConfig.DisableShadows)
+            DisableShadows();
+    }
+
+    [MonoModReplace]
+    private void faceBillboardsToCamera()
+    {
+    }
+
+    [MonoModReplace]
+    private void syncEffectCamera()
+    {
     }
 }
