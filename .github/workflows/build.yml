@@ -1,0 +1,51 @@
+name: Build and Patch
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: mu3-optimizer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: mu3-optimizer
+
+      - name: Checkout Mu3Reference
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.MU3_REFERENCE_REPO }}
+          token: ${{ secrets.MU3_REFERENCE_PAT }}
+          path: Mu3Reference
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install .NET Framework 3.5 targeting pack
+        run: dotnet add package Microsoft.NETFramework.ReferenceAssemblies --version 1.0.3
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Run MonoMod
+        run: |
+          cd bin/Release/net35
+          ./MonoMod.exe Assembly-CSharp.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Assembly-CSharp.Steroid.mm
+          path: mu3-optimizer/bin/Release/net35/Assembly-CSharp.Steroid.mm.dll
