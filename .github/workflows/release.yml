@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        required: true
+        type: choice
+        options:
+          - none
+          - patch
+          - minor
+          - major
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bump version
+        if: inputs.bump != 'none'
+        run: |
+          current=$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)
+          IFS='.' read -r major minor patch <<< "$current"
+
+          case "${{ inputs.bump }}" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+
+          new_version="$major.$minor.$patch"
+          sed -i "s|<Version>$current</Version>|<Version>$new_version</Version>|" Steroid.csproj
+
+      - name: Commit version bump
+        if: inputs.bump != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Steroid.csproj
+          git commit -m "release: v$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)"
+          git push
+
+      - name: Resolve version
+        id: version
+        run: echo "version=$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Assembly-CSharp.Steroid.mm
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ needs.prepare.outputs.version }}" \
+            Assembly-CSharp.Steroid.mm.dll \
+            --repo "${{ github.repository }}" \
+            --title "v${{ needs.prepare.outputs.version }}" \
+            --generate-notes
