@@ -55,6 +55,7 @@ public class patch_BattleUI : BattleUI
         }
     }
 
+    //TODO: currently having sorting issue when failing (chara models get on top of UI)
     private void Deoptimize()
     {
         if (_cachedCanvases == null)

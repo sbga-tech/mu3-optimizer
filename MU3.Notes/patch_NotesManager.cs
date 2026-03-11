@@ -19,7 +19,8 @@ public class patch_NotesManager : NotesManager
     // Index of the first NoteControl in the sorted list that has not yet ended.
     private int _noteControlSpawnCursor;
 
-    private Dictionary<int, Dictionary<Material, Material>> _instancedMaterials;
+    // rqBase → (mat+mesh key → instanced material).
+    private Dictionary<int, Dictionary<int, Material>> _instancedMaterials;
 
     //use (noteType << 16 | index) as key to avoid collisions across NotesCache pools
     private HashSet<int> _processedItems;
@@ -119,7 +120,7 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.TapEndK:
                 rq = 2550;
                 return true;
-            // SideHoldEnd → 2551
+            // SideHoldEnd → 2560
             case NoteModel.Type.KnockLEndV:
             case NoteModel.Type.KnockREndV:
             case NoteModel.Type.KnockLEndP:
@@ -128,7 +129,7 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.KnockREndW:
             case NoteModel.Type.KnockLEndK:
             case NoteModel.Type.KnockREndK:
-                rq = 2551;
+                rq = 2560;
                 return true;
 
             // Tap → 2600
@@ -149,7 +150,7 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.ExK:
                 rq = 2600;
                 return true;
-            // Side → 2601
+            // Side → 2610
             case NoteModel.Type.KnockLV:
             case NoteModel.Type.KnockRV:
             case NoteModel.Type.KnockLP:
@@ -158,12 +159,12 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.KnockRW:
             case NoteModel.Type.KnockLK:
             case NoteModel.Type.KnockRK:
-            // ExSide → 2601
+            // ExSide → 2610
             case NoteModel.Type.ExKnockLV:
             case NoteModel.Type.ExKnockRV:
             case NoteModel.Type.ExKnockLP:
             case NoteModel.Type.ExKnockRP:
-            // SideHold → 2601
+            // SideHold → 2610
             case NoteModel.Type.KnockHLV:
             case NoteModel.Type.KnockHRV:
             case NoteModel.Type.KnockHLP:
@@ -172,12 +173,12 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.KnockHRW:
             case NoteModel.Type.KnockHLK:
             case NoteModel.Type.KnockHRK:
-            // ExSideHold → 2601
+            // ExSideHold → 2610
             case NoteModel.Type.ExKnockHLV:
             case NoteModel.Type.ExKnockHRV:
             case NoteModel.Type.ExKnockHLP:
             case NoteModel.Type.ExKnockHRP:
-                rq = 2601;
+                rq = 2610;
                 return true;
             // Flick / ExFlick → 2590
             case NoteModel.Type.FlickL:
@@ -185,6 +186,38 @@ public class patch_NotesManager : NotesManager
             case NoteModel.Type.ExFlickL:
             case NoteModel.Type.ExFlickR:
                 rq = 2590;
+                return true;
+            // Each mine types needs their own queue because they
+            // are based on vertex coloring instead of UV mapping,
+            // so GPU instancing cannot work across type. We need
+            // to place each type's drawcall together to get them
+            // properly batched.
+            case NoteModel.Type.ShellNormal:
+                rq = 2655;
+                return true;
+            case NoteModel.Type.ShellHard:
+                rq = 2660;
+                return true;
+            case NoteModel.Type.ShellDanger:
+                rq = 2665;
+                return true;
+            case NoteModel.Type.NeedleNormal:
+                rq = 2670;
+                return true;
+            case NoteModel.Type.NeedleHard:
+                rq = 2675;
+                return true;
+            case NoteModel.Type.NeedleDanger:
+                rq = 2680;
+                return true;
+            case NoteModel.Type.RectNormal:
+                rq = 2685;
+                return true;
+            case NoteModel.Type.RectHard:
+                rq = 2690;
+                return true;
+            case NoteModel.Type.RectDanger:
+                rq = 2695;
                 return true;
 
             default:
@@ -196,7 +229,7 @@ public class patch_NotesManager : NotesManager
     [MonoModReplace]
     public new NotesCacheItem createNoteModel(NoteModel noteModel)
     {
-        if (_instancedMaterials == null) _instancedMaterials = new Dictionary<int, Dictionary<Material, Material>>();
+        if (_instancedMaterials == null) _instancedMaterials = new Dictionary<int, Dictionary<int, Material>>();
         if (_processedItems == null) _processedItems = new HashSet<int>();
         if (_mirrorApplied == null) _mirrorApplied = new HashSet<int>();
 
@@ -208,61 +241,37 @@ public class patch_NotesManager : NotesManager
         {
             _processedItems.Add(itemKey);
 
-            if (getOptimalRenderQueue(noteModel.type, out var rq))
+            var rqBase = getOptimalRenderQueue(noteModel.type, out var rq)
+                ? rq
+                : noteModel.renderQueue;
+
+            if (!_instancedMaterials.TryGetValue(rqBase, out var matCache))
             {
-                // instance materials keyed by target queue so
-                // all note types in the same queue share the same instances,
-                // while types in different queues get separate instances even
-                // if they share the same base material.
-                if (!_instancedMaterials.TryGetValue(rq, out var matCache))
-                {
-                    matCache = new Dictionary<Material, Material>();
-                    _instancedMaterials[rq] = matCache;
-                }
-
-                var renderers = notesCacheItem.go.GetComponentsInChildren<Renderer>();
-                foreach (var renderer in renderers)
-                {
-                    var shared = renderer.sharedMaterial;
-                    if (shared == null) continue;
-                    if (shared.renderQueue == rq) continue;
-
-                    if (!matCache.TryGetValue(shared, out var instanced))
-                    {
-                        instanced = new Material(shared) { renderQueue = rq };
-                        matCache[shared] = instanced;
-                    }
-                    renderer.sharedMaterial = instanced;
-                }
+                matCache = new Dictionary<int, Material>();
+                _instancedMaterials[rqBase] = matCache;
             }
-            else
+
+            var renderers = notesCacheItem.go.GetComponentsInChildren<Renderer>();
+            foreach (var renderer in renderers)
             {
-                // keyed by base render queue so that
-                // different note types sharing the same base rq (e.g. Shell,
-                // Needle, Rect all at 2651) reuse the same layered instances.
-                var rqFallback = noteModel.renderQueue;
+                var shared = renderer.sharedMaterial;
+                if (shared == null) continue;
 
-                if (!_instancedMaterials.TryGetValue(rqFallback, out var matCache))
-                {
-                    matCache = new Dictionary<Material, Material>();
-                    _instancedMaterials[rqFallback] = matCache;
-                }
+                // Only same mat+mesh can be placed in the same queue to ensure batching
+                var meshFilter = renderer.GetComponent<MeshFilter>();
+                var mesh = meshFilter != null ? meshFilter.sharedMesh : null;
+                const int prime = 397;
+                var matMeshKey = (shared.GetInstanceID() * prime) ^ (mesh != null ? mesh.GetInstanceID() : 0);
 
-                var renderers = notesCacheItem.go.GetComponentsInChildren<Renderer>();
-                foreach (var renderer in renderers)
+                if (!matCache.TryGetValue(matMeshKey, out var instanced))
                 {
-                    var shared = renderer.sharedMaterial;
-                    if (shared == null) continue;
-                    if (!matCache.TryGetValue(shared, out var instanced))
+                    instanced = new Material(shared)
                     {
-                        instanced = new Material(shared)
-                        {
-                            renderQueue = rqFallback + matCache.Count
-                        };
-                        matCache[shared] = instanced;
-                    }
-                    renderer.sharedMaterial = instanced;
+                        renderQueue = rqBase + matCache.Count
+                    };
+                    matCache[matMeshKey] = instanced;
                 }
+                renderer.sharedMaterial = instanced;
             }
         }
 
@@ -274,6 +283,7 @@ public class patch_NotesManager : NotesManager
             var mrs = notesCacheItem.go.GetComponentsInChildren<Renderer>(true);
 
             // This is clearly problematic but works for now
+            // Could be erroneous for mines, but they are not subjected to mirroring
             foreach (var renderer in mrs)
             {
                 renderer.transform.rotation = Quaternion.Euler(0f, 0, 180f) * renderer.transform.rotation;
