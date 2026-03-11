@@ -1,39 +1,32 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using MonoMod;
 using MU3.Sequence;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace MU3;
 
 [MonoModIfFlag("NoUICameraDuringPlay")]
 public class patch_SystemUI : SystemUI
 {
-    
-    // public static extern Canvas orig_CreateCanvas(MU3.Graphics.Const.SortOrder sortOrder);
-    //
-    // public new static Canvas CreateCanvas(MU3.Graphics.Const.SortOrder sortOrder)
-    // {
-    //     Canvas canvas = orig_CreateCanvas(sortOrder);
-    //     canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-    //     return canvas;
-    // }
-
     [MonoModIgnore]
     private List<Canvas> _canvasList;
-    
+
     [MonoModIgnore]
     private Camera _camera;
-    
+
     private bool _optiEnabled;
     
-    public extern void orig_execute();
-    
-    private void optimize()
+    public static event Action<bool> OnUIOptimizeToggle;
+
+    private void Optimize()
     {
         if (_optiEnabled)
             return;
 
         _optiEnabled = true;
+        OnUIOptimizeToggle?.Invoke(_optiEnabled);
 
         foreach (var canvas in _canvasList)
         {
@@ -42,18 +35,23 @@ public class patch_SystemUI : SystemUI
             if (canvas.sortingOrder <= -1000)
                 continue;
 
+            canvas.enabled = false;
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.enabled = true;
         }
+        //Canvas.ForceUpdateCanvases();
 
         _camera.enabled = false;
     }
 
-    private void deoptimize()
+    private void Deoptimize()
     {
         if (!_optiEnabled)
             return;
 
         _optiEnabled = false;
+        OnUIOptimizeToggle?.Invoke(_optiEnabled);
+        
         _camera.enabled = true;
 
         foreach (var canvas in _canvasList)
@@ -67,8 +65,8 @@ public class patch_SystemUI : SystemUI
             canvas.worldCamera = _camera;
         }
     }
-    
-    private bool isRequiredUIExist()
+
+    private bool IsRequiredUIExist()
     {
         foreach (var canvas in _canvasList)
         {
@@ -79,22 +77,15 @@ public class patch_SystemUI : SystemUI
         return false;
     }
     
+    public extern void orig_execute();
+
     public new void execute()
     {
-        var rootScript = RootScript.instance as patch_RootScript;
-        
-        if (rootScript != null)
-        {
-            if (rootScript.isPlayingMusic() && !(isRequiredUIExist() || rootScript.getPlayMusicState() < PlayMusic.EState.Countdown))
-            {
-                optimize();
-            }
-            else
-            {
-                deoptimize();
-            }
-        }
-        
+        if (patch_PlayMusic.IsPlayingMusic && !IsRequiredUIExist())
+            Optimize();
+        else
+            Deoptimize();
+
         if (!_optiEnabled)
         {
             orig_execute();

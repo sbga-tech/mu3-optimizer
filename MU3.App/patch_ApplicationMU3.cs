@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using MonoMod;
 using MU3.AM;
+using MU3.Sequence;
 using MU3.Util;
 
 namespace MU3.App;
@@ -25,8 +26,7 @@ public class patch_ApplicationMU3 : SingletonMonoBehaviourStateMachine<Applicati
     [MonoModReplace]
     public new void Update()
     {
-        var rootScript = RootScript.instance as patch_RootScript;
-        if (rootScript == null || !rootScript.isPlayingMusic())
+        if (!patch_PlayMusic.IsPlayingMusic)
         {
             SingletonStateMachine<AMManager, AMManager.EState>.instance.execute();
         }
