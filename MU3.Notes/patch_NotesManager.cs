@@ -20,10 +20,11 @@ public class patch_NotesManager : NotesManager
     private int _noteControlSpawnCursor;
 
     private Dictionary<int, Dictionary<Material, Material>> _instancedMaterials;
-    
-    private HashSet<NotesCacheItem> _processedItems;
 
-    private HashSet<NotesCacheItem> _mirrorApplied;
+    //use (noteType << 16 | index) as key to avoid collisions across NotesCache pools
+    private HashSet<int> _processedItems;
+
+    private HashSet<int> _mirrorApplied;
 
     [MonoModIgnore] private NotesPosCache _posCache;
     [MonoModIgnore] private GameEngine _gameEngine;
@@ -94,9 +95,6 @@ public class patch_NotesManager : NotesManager
             _noteControlList.Sort((a, b) => a.frameCreate.CompareTo(b.frameCreate));
 
         _noteControlSpawnCursor = 0;
-        _instancedMaterials = new Dictionary<int, Dictionary<Material, Material>>();
-        _processedItems = new HashSet<NotesCacheItem>();
-        _mirrorApplied = new HashSet<NotesCacheItem>();
     }
 
     
@@ -198,12 +196,17 @@ public class patch_NotesManager : NotesManager
     [MonoModReplace]
     public new NotesCacheItem createNoteModel(NoteModel noteModel)
     {
+        if (_instancedMaterials == null) _instancedMaterials = new Dictionary<int, Dictionary<Material, Material>>();
+        if (_processedItems == null) _processedItems = new HashSet<int>();
+        if (_mirrorApplied == null) _mirrorApplied = new HashSet<int>();
+
         var notesCache = _noteCacheList[(int)noteModel.type];
         var notesCacheItem = notesCache.pop();
 
-        if (!_processedItems.Contains(notesCacheItem))
+        var itemKey = ((int)noteModel.type << 16) | notesCacheItem.index;
+        if (!_processedItems.Contains(itemKey))
         {
-            _processedItems.Add(notesCacheItem);
+            _processedItems.Add(itemKey);
 
             if (getOptimalRenderQueue(noteModel.type, out var rq))
             {
@@ -265,15 +268,17 @@ public class patch_NotesManager : NotesManager
 
         
         //Great Rotation Tech
-        if (noteModel.mirror && !_mirrorApplied.Contains(notesCacheItem))
+        if (noteModel.mirror && !_mirrorApplied.Contains(itemKey))
         {
-            _mirrorApplied.Add(notesCacheItem);
+            _mirrorApplied.Add(itemKey);
             var mrs = notesCacheItem.go.GetComponentsInChildren<Renderer>(true);
 
+            // This is clearly problematic but works for now
             foreach (var renderer in mrs)
             {
                 renderer.transform.rotation = Quaternion.Euler(0f, 0, 180f) * renderer.transform.rotation;
             }
+            
             // MaterialPropertyBlock mpb = new MaterialPropertyBlock();
             // for (int m = 0; m < mrs.Length; m++)
             // {
