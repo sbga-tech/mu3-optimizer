@@ -43,7 +43,7 @@ static partial class MonoModRules
         MonoModRule.Flag.Set("BoostLoginRequests", boostLoginRequests);
         var noUiCameraDuringPlay = ini.getIntValue("Optimization", "NoUICameraDuringPlay", 1) != 0;
         MonoModRule.Flag.Set("NoUICameraDuringPlay", noUiCameraDuringPlay);
-        var betterNotes = ini.getIntValue("Optimization", "BetterNotes", 0) != 0;
+        var betterNotes = ini.getIntValue("Optimization", "BetterNotes", 1) != 0;
         MonoModRule.Flag.Set("BetterNotes", betterNotes);
     }
 }
