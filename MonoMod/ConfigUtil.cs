@@ -52,27 +52,26 @@ static partial class MonoModRules
 
             var section = (string)iniAttr.ConstructorArguments[0].Value;
             var key = (string)iniAttr.ConstructorArguments[1].Value;
-            var defArg = iniAttr.ConstructorArguments[2];
-            var isStringDefault = defArg.Type.MetadataType == MetadataType.String;
+            var defaultValue = iniAttr.ConstructorArguments[2].Value;
 
             switch (field.FieldType.MetadataType)
             {
                 case MetadataType.Single:
-                    il.Emit(OpCodes.Ldc_R4, ini.getFloatValue(section, key, (float)(double)defArg.Value));
+                    il.Emit(OpCodes.Ldc_R4, ini.getFloatValue(section, key, (float)(double)defaultValue));
                     break;
                 case MetadataType.Double:
-                    il.Emit(OpCodes.Ldc_R8, ini.getFloatValue(section, key, (float)(double)defArg.Value));
+                    il.Emit(OpCodes.Ldc_R8, ini.getFloatValue(section, key, (float)(double)defaultValue));
                     break;
                 case MetadataType.Boolean:
-                    il.Emit(ini.getIntValue(section, key, (int)(double)defArg.Value) != 0
+                    il.Emit(ini.getIntValue(section, key, (int)(double)defaultValue) != 0
                         ? OpCodes.Ldc_I4_1
                         : OpCodes.Ldc_I4_0);
                     break;
                 case MetadataType.Int32:
-                    il.Emit(OpCodes.Ldc_I4, ini.getIntValue(section, key, (int)(double)defArg.Value));
+                    il.Emit(OpCodes.Ldc_I4, ini.getIntValue(section, key, (int)(double)defaultValue));
                     break;
                 case MetadataType.String:
-                    var strDefault = isStringDefault ? (string)defArg.Value : "";
+                    var strDefault = defaultValue != null ? (string) defaultValue : "";
                     il.Emit(OpCodes.Ldstr, ini.getValue(section, key, strDefault));
                     break;
                 default:
@@ -448,7 +447,7 @@ static partial class MonoModRules
 
     public class IniSection
     {
-        public static Regex RegexSectionDefine = new Regex("^\\[(\\w+)\\]");
+        public static Regex RegexSectionDefine = new Regex("^\\[([\\w.]+)\\]");
 
         public static Regex RegexVariable = new Regex("^(\\w+)\\s*\\=\\s*(\\S+)");
 

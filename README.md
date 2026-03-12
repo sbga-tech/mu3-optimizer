@@ -21,7 +21,7 @@ mu3.ini
 NoImageBloom=1
 BetterRendering=1
 BoostLoginRequests=1
-NoUICameraDuringPlay=1
+NoUICameraDuringPlay=0 ;Experimental
 BetterNotes=1
 
 [Optimization.Rendering]
