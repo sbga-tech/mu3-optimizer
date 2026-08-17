@@ -98,7 +98,7 @@ public class patch_NotesManager : NotesManager
         _noteControlSpawnCursor = 0;
     }
 
-    
+
     // Returns true and sets rq for note types whose render queue is
     // reassigned by the optimization. Other types keep their original queue.
     private static bool getOptimalRenderQueue(NoteModel.Type noteType, out int rq)
@@ -275,7 +275,7 @@ public class patch_NotesManager : NotesManager
             }
         }
 
-        
+
         //Great Rotation Tech
         if (noteModel.mirror && !_mirrorApplied.Contains(itemKey))
         {
@@ -288,7 +288,7 @@ public class patch_NotesManager : NotesManager
             {
                 renderer.transform.rotation = Quaternion.Euler(0f, 0, 180f) * renderer.transform.rotation;
             }
-            
+
             // MaterialPropertyBlock mpb = new MaterialPropertyBlock();
             // for (int m = 0; m < mrs.Length; m++)
             // {
@@ -368,7 +368,7 @@ public class patch_NotesManager : NotesManager
         UnityEngine.Profiling.Profiler.EndSample();
 
         #endregion
-        
+
         #region FieldSetup
 
         UnityEngine.Profiling.Profiler.BeginSample("FieldSetup");
@@ -412,7 +412,7 @@ public class patch_NotesManager : NotesManager
         UnityEngine.Profiling.Profiler.EndSample();
 
         #endregion
-        
+
         #region NoteUpdateState
 
         UnityEngine.Profiling.Profiler.BeginSample("NoteUpdateState");
@@ -450,7 +450,7 @@ public class patch_NotesManager : NotesManager
         UnityEngine.Profiling.Profiler.EndSample();
 
         #endregion
-        
+
         #region NoteCount
 
         UnityEngine.Profiling.Profiler.BeginSample("NoteCount");
@@ -504,12 +504,12 @@ public class patch_NotesManager : NotesManager
                 technicalRankID = TechnicalRankID.S;
                 break;
         }
-        
+
         if (_gameEngine.counters.isDead)
         {
             _retireResult = RetireResult.NoLife;
         }
-        
+
         if (_retireResult == RetireResult.None && technicalRankID != TechnicalRankID.Invalid)
         {
             var techScoreEnable = _gameEngine.counters.getTechScoreEnable();
@@ -519,12 +519,12 @@ public class patch_NotesManager : NotesManager
                 _retireResult = RetireResult.ScoreRetire;
             }
         }
-        
+
         if (_retireResult != 0)
         {
             _gameEngine.killPlayer();
         }
-        
+
         if (isTutorial())
         {
             _isForceFinish = tutorialManager.isEnd;
@@ -534,7 +534,7 @@ public class patch_NotesManager : NotesManager
         {
             _isFinishNote = _noteControlList.isAllEnd;
         }
-        
+
         _isFinishPlay = !Singleton<GameSound>.instance.gameBGM.isPlay && _curFrame > _frameNoteEnd && _isFinishNote;
         calcGuideSE();
         UnityEngine.Profiling.Profiler.EndSample();
