@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Assembly-CSharp.Steroid.mm</AssemblyName>
-        <Version>0.0.1</Version>
+        <Version>0.0.2</Version>
         <TargetFramework>net35</TargetFramework>
         <Company>oshinop</Company>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
