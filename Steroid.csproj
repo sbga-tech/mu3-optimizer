@@ -31,12 +31,13 @@
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
-        <Reference Include="mscorlib"><HintPath>..\Mu3Reference\mscorlib.dll</HintPath></Reference>
-        <Reference Include="UnityEngine"><HintPath>..\Mu3Reference\UnityEngine.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UI"><HintPath>..\Mu3Reference\UnityEngine.UI.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\Mu3Reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
-        <Reference Include="AMDaemon.NET"><HintPath>..\Mu3Reference\AMDaemon.NET.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp"><HintPath>..\Mu3Reference\Assembly-CSharp.dll</HintPath></Reference>
+        <Reference Include="mscorlib"><HintPath>..\mu3-reference\mscorlib.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>..\mu3-reference\UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>..\mu3-reference\UnityEngine.UI.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\mu3-reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
+        <Reference Include="AMDaemon.NET"><HintPath>..\mu3-reference\AMDaemon.NET.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp"><HintPath>..\mu3-reference\Assembly-CSharp.dll</HintPath></Reference>
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
         <PackageReference Include="monomod" Version="20.5.21.5" />
     </ItemGroup>
 </Project>

@@ -418,7 +418,7 @@ public class patch_NotesManager : NotesManager
         UnityEngine.Profiling.Profiler.BeginSample("NoteUpdateState");
         for (var node = _pNotesList.First; node != null; node = node.Next)
         {
-            node.Value.updateState();
+            node.Value.updateState(bCheckPlay: true, bDrawModel: true);
         }
 
         UnityEngine.Profiling.Profiler.EndSample();
@@ -494,13 +494,13 @@ public class patch_NotesManager : NotesManager
         var technicalRankID = TechnicalRankID.Invalid;
         switch (GameOption.abort)
         {
-            case UserOption.eAbort.SSS:
+            case UserOptionValue.eAbort.SSS:
                 technicalRankID = TechnicalRankID.SSS;
                 break;
-            case UserOption.eAbort.SS:
+            case UserOptionValue.eAbort.SS:
                 technicalRankID = TechnicalRankID.SS;
                 break;
-            case UserOption.eAbort.S:
+            case UserOptionValue.eAbort.S:
                 technicalRankID = TechnicalRankID.S;
                 break;
         }

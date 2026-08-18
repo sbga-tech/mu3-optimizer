@@ -61,8 +61,10 @@ public class patch_HoldNoteCore : HoldNoteCore
 
         var notesManager = SingletonMonoBehaviour<GameEngine>.instance.notesManager;
         var currentFrame = notesManager.getCurrentFrame();
+        _posEnd.z = notesManager.calcNotePosZ(frameEnd - currentFrame, param.pattern);
 
-        if (!notesManager.isFrameVisible(frameEnd, param.pattern))
+        if (!notesManager.isFrameVisible(frameEnd, param.pattern)
+            || _posEnd.z > notesManager.getNoteAppearZ())
         {
             SetActiveCached(_itemEnd,     false, ref _activeItemEnd);
             SetActiveCached(_itemEndGood, false, ref _activeItemEndGood);
@@ -70,7 +72,6 @@ public class patch_HoldNoteCore : HoldNoteCore
         }
         else
         {
-            _posEnd.z = notesManager.calcNotePosZ(frameEnd - currentFrame, param.pattern);
 
             if (_itemEnd != null)
             {
