@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Assembly-CSharp.Steroid.mm</AssemblyName>
-        <Version>0.0.2</Version>
+        <Version>0.0.3</Version>
         <TargetFramework>net35</TargetFramework>
         <Company>oshinop</Company>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -15,8 +15,7 @@
         <PlatformTarget>AnyCPU</PlatformTarget>
         <DebugSymbols>true</DebugSymbols>
         <DebugType>full</DebugType>
-        <Optimize>false</Optimize>
-        <OutputPath>bin\Debug\</OutputPath>
+        <OutputPath>..\bin\Debug\</OutputPath>
         <DefineConstants>DEBUG;TRACE;ENABLE_PROFILER</DefineConstants>
         <ErrorReport>prompt</ErrorReport>
         <WarningLevel>4</WarningLevel>
@@ -25,19 +24,22 @@
         <PlatformTarget>AnyCPU</PlatformTarget>
         <DebugType>pdbonly</DebugType>
         <Optimize>true</Optimize>
-        <OutputPath>bin\Release\</OutputPath>
+        <OutputPath>..\bin\Release\</OutputPath>
         <DefineConstants>TRACE</DefineConstants>
         <ErrorReport>prompt</ErrorReport>
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
     <ItemGroup>
-        <Reference Include="mscorlib"><HintPath>..\mu3-reference\mscorlib.dll</HintPath></Reference>
-        <Reference Include="UnityEngine"><HintPath>..\mu3-reference\UnityEngine.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UI"><HintPath>..\mu3-reference\UnityEngine.UI.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\mu3-reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
-        <Reference Include="AMDaemon.NET"><HintPath>..\mu3-reference\AMDaemon.NET.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp"><HintPath>..\mu3-reference\Assembly-CSharp.dll</HintPath></Reference>
+        <Reference Include="mscorlib"><HintPath>..\..\mu3-reference\mscorlib.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>..\..\mu3-reference\UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>..\..\mu3-reference\UnityEngine.UI.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\..\mu3-reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
+        <Reference Include="AMDaemon.NET"><HintPath>..\..\mu3-reference\AMDaemon.NET.dll</HintPath></Reference>
+        <Reference Include="Assembly-CSharp"><HintPath>..\..\mu3-reference\Assembly-CSharp.dll</HintPath></Reference>
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
         <PackageReference Include="monomod" Version="20.5.21.5" />
+        <Compile Include="..\Common\**\*.cs" Link="Common\%(RecursiveDir)%(Filename)%(Extension)" />
+
     </ItemGroup>
 </Project>
+

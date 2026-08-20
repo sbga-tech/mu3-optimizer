@@ -23,6 +23,7 @@ BetterRendering=1
 BoostLoginRequests=1
 NoUICameraDuringPlay=0 ;Experimental
 BetterNotes=1
+NoAlloc=1
 
 [Optimization.Rendering]
 ; Requirement: FXFPS>=BGMergeFPS>=StageFPS

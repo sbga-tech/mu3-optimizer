@@ -5,7 +5,7 @@ import os
 import sys
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "Assets")
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "MU3.Mod.Assets")
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "Assembly-CSharp", "MU3.Mod.Assets")
 NAMESPACE = "MU3.Mod.Assets"
 BYTES_PER_LINE = 16
 

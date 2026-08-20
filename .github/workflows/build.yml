@@ -31,11 +31,8 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Install .NET Framework 3.5 targeting pack
-        run: dotnet add package Microsoft.NETFramework.ReferenceAssemblies --version 1.0.3
-
       - name: Build
-        run: dotnet build -c Release
+        run: dotnet build Steroid.sln -c Release
 
       - name: Run MonoMod
         run: |
@@ -45,5 +42,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Assembly-CSharp.Steroid.mm
-          path: mu3-optimizer/bin/Release/net35/Assembly-CSharp.Steroid.mm.dll
+          name: Steroid.mm
+          path: |
+            mu3-optimizer/bin/Release/net35/Assembly-CSharp.Steroid.mm.dll
+            mu3-optimizer/bin/Release/net35/AMDaemon.NET.Steroid.mm.dll

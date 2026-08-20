@@ -1,6 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steroid", "Steroid.csproj", "{78870C8D-2925-43E3-AC4C-622D2AE055BC}"
+# Visual Studio Version 17
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Assembly-CSharp.Steroid", "Assembly-CSharp\Assembly-CSharp.Steroid.csproj", "{78870C8D-2925-43E3-AC4C-622D2AE055BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMDaemon.NET.Steroid", "AMDaemon.NET\AMDaemon.NET.Steroid.csproj", "{B3E1A9C2-4D7F-4A11-9E6C-8F2D1B0A4C55}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +15,9 @@ Global
 		{78870C8D-2925-43E3-AC4C-622D2AE055BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{78870C8D-2925-43E3-AC4C-622D2AE055BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{78870C8D-2925-43E3-AC4C-622D2AE055BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3E1A9C2-4D7F-4A11-9E6C-8F2D1B0A4C55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3E1A9C2-4D7F-4A11-9E6C-8F2D1B0A4C55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3E1A9C2-4D7F-4A11-9E6C-8F2D1B0A4C55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3E1A9C2-4D7F-4A11-9E6C-8F2D1B0A4C55}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

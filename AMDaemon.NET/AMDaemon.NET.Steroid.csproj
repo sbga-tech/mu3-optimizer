@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AssemblyName>AMDaemon.NET.Steroid.mm</AssemblyName>
+        <Version>0.0.3</Version>
+        <TargetFramework>net35</TargetFramework>
+        <Company>oshinop</Company>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <NoWarn>IDE0044,IDE0051,CS0626</NoWarn>
+        <Configurations>Debug;Release</Configurations>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <OutputPath>..\bin\Debug\</OutputPath>
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <OutputPath>..\bin\Release\</OutputPath>
+        <DefineConstants>TRACE</DefineConstants>
+        <Optimize>true</Optimize>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="mscorlib">
+            <HintPath>..\..\mu3-reference\mscorlib.dll</HintPath>
+        </Reference>
+        <Reference Include="AMDaemon.NET">
+            <HintPath>..\..\mu3-reference\AMDaemon.NET.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
+        <PackageReference Include="monomod" Version="20.5.21.5" />
+        <Compile Include="..\Common\**\*.cs" Link="Common\%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+</Project>
+

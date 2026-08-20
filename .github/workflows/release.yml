@@ -28,7 +28,7 @@ jobs:
       - name: Bump version
         if: inputs.bump != 'none'
         run: |
-          current=$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)
+          current=$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)
           IFS='.' read -r major minor patch <<< "$current"
 
           case "${{ inputs.bump }}" in
@@ -38,20 +38,23 @@ jobs:
           esac
 
           new_version="$major.$minor.$patch"
-          sed -i "s|<Version>$current</Version>|<Version>$new_version</Version>|" Steroid.csproj
+          sed -i "s|<Version>$current</Version>|<Version>$new_version</Version>|" \
+            Assembly-CSharp/Assembly-CSharp.Steroid.csproj \
+            AMDaemon.NET/AMDaemon.NET.Steroid.csproj
 
       - name: Commit version bump
         if: inputs.bump != 'none'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Steroid.csproj
-          git commit -m "release: v$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)"
+          git add Assembly-CSharp/Assembly-CSharp.Steroid.csproj AMDaemon.NET/AMDaemon.NET.Steroid.csproj
+          git commit -m "release: v$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)"
           git push
 
       - name: Resolve version
         id: version
-        run: echo "version=$(grep -oP '(?<=<Version>)[^<]+' Steroid.csproj)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)" >> "$GITHUB_OUTPUT"
+
 
   build:
     needs: prepare
@@ -68,7 +71,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: Assembly-CSharp.Steroid.mm
+          name: Steroid.mm
 
       - name: Create release
         env:
@@ -76,6 +79,8 @@ jobs:
         run: |
           gh release create "v${{ needs.prepare.outputs.version }}" \
             Assembly-CSharp.Steroid.mm.dll \
+            AMDaemon.NET.Steroid.mm.dll \
             --repo "${{ github.repository }}" \
             --title "v${{ needs.prepare.outputs.version }}" \
             --generate-notes
+

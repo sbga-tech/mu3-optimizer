@@ -13,15 +13,25 @@ public class patch_FieldObject : FieldObject
 
     [MonoModIgnore] private List<NotesLane> _notesLanes;
     [MonoModIgnore] private List<NotesOneWay> _notesOneWayList;
+    [MonoModIgnore] private NotesField _notesField;
     [MonoModIgnore] private float _alphaGame;
     [MonoModIgnore] private float _widthAmp;
 
-    private extern void orig_initNotesLanes();
-
+    // Orig walks every lane and LaneSetParam.clear() (~15M/play).
+    // moveNotesLanes overwrites every field JointLane.set reads.
+    // Do not reset the spawn cursor here — that used to run every frame
+    // and made _lanesForeIdx useless.
+    [MonoModReplace]
     private void initNotesLanes()
     {
-        orig_initNotesLanes();
-        _lanesForeIdx = null; // forces realloc + zero-reset in moveNotesLanes()
+    }
+
+    private extern void orig_setup(bool isDazzling);
+
+    public new void setup(bool isDazzling)
+    {
+        orig_setup(isDazzling);
+        _lanesForeIdx = null;
     }
 
     [MonoModReplace]
@@ -213,6 +223,26 @@ public class patch_FieldObject : FieldObject
             }
         }
     }
+
+    [MonoModReplace]
+    private void drawModel()
+    {
+        if (getCurrentState() == EState.None)
+            return;
+
+        _notesField._jointField.set(_notesField._jointParam);
+        var oneways = _notesOneWayList;
+        for (var i = 0; i < oneways.Count; i++)
+            oneways[i].draw();
+        var lanes = _notesLanes;
+        for (var j = 0; j < lanes.Count; j++)
+        {
+            var lane = lanes[j];
+            if (lane._isDraw)
+                lane.draw();
+        }
+    }
+
     public static float CalcRate(float from, float to, float mid, float minimum = 0.01f)
     {
         float num;
