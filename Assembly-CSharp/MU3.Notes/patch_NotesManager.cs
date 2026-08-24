@@ -13,19 +13,12 @@ using UnityEngine;
 
 namespace MU3.Notes;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("ActiveNoteTraversal")]
 public class patch_NotesManager : NotesManager
 {
     // Index of the first NoteControl in the sorted list that has not yet ended.
     private int _noteControlSpawnCursor;
 
-    // rqBase → (mat+mesh key → instanced material).
-    private Dictionary<int, Dictionary<int, Material>> _instancedMaterials;
-
-    //use (noteType << 16 | index) as key to avoid collisions across NotesCache pools
-    private HashSet<int> _processedItems;
-
-    private HashSet<int> _mirrorApplied;
 
     [MonoModIgnore] private NotesPosCache _posCache;
     [MonoModIgnore] private GameEngine _gameEngine;
@@ -58,7 +51,6 @@ public class patch_NotesManager : NotesManager
     [MonoModIgnore] private HoldMisc _holdMisc;
     [MonoModIgnore] private FieldObject _fieldObject;
     [MonoModIgnore] private float _curAnimFrame;
-    [MonoModIgnore] private NotesCacheList _noteCacheList;
 
     // -------------------------------------------------------------------------
     // Private methods of NotesManager that we call from the replaced update().
@@ -99,207 +91,6 @@ public class patch_NotesManager : NotesManager
     }
 
 
-    // Returns true and sets rq for note types whose render queue is
-    // reassigned by the optimization. Other types keep their original queue.
-    private static bool getOptimalRenderQueue(NoteModel.Type noteType, out int rq)
-    {
-        //Render Queue Explanation:
-        //Tap End should be below other notes in case that it mask them.
-        //Tap(2DNotes) and Wall(TransparentCutout) should NOT be on the same rq because it destroys GPU instancing.
-        //Flick and Tap shouldn't be on the same rq because flicks
-        //have two materials with could interrupt GPU instancing sequence.
-        switch (noteType)
-        {
-            // TapEnd → 2550
-            case NoteModel.Type.TapEndR:
-            case NoteModel.Type.TapEndB:
-            case NoteModel.Type.TapEndG:
-            case NoteModel.Type.TapEndRA:
-            case NoteModel.Type.TapEndGA:
-            case NoteModel.Type.TapEndW:
-            case NoteModel.Type.TapEndK:
-                rq = 2550;
-                return true;
-            // SideHoldEnd → 2560
-            case NoteModel.Type.KnockLEndV:
-            case NoteModel.Type.KnockREndV:
-            case NoteModel.Type.KnockLEndP:
-            case NoteModel.Type.KnockREndP:
-            case NoteModel.Type.KnockLEndW:
-            case NoteModel.Type.KnockREndW:
-            case NoteModel.Type.KnockLEndK:
-            case NoteModel.Type.KnockREndK:
-                rq = 2560;
-                return true;
-
-            // Tap → 2600
-            case NoteModel.Type.TapR:
-            case NoteModel.Type.TapB:
-            case NoteModel.Type.TapG:
-            case NoteModel.Type.TapRA:
-            case NoteModel.Type.TapGA:
-            case NoteModel.Type.TapW:
-            case NoteModel.Type.TapK:
-            // ExTap → 2600
-            case NoteModel.Type.ExR:
-            case NoteModel.Type.ExB:
-            case NoteModel.Type.ExG:
-            case NoteModel.Type.ExRA:
-            case NoteModel.Type.ExGA:
-            case NoteModel.Type.ExW:
-            case NoteModel.Type.ExK:
-                rq = 2600;
-                return true;
-            // Side → 2610
-            case NoteModel.Type.KnockLV:
-            case NoteModel.Type.KnockRV:
-            case NoteModel.Type.KnockLP:
-            case NoteModel.Type.KnockRP:
-            case NoteModel.Type.KnockLW:
-            case NoteModel.Type.KnockRW:
-            case NoteModel.Type.KnockLK:
-            case NoteModel.Type.KnockRK:
-            // ExSide → 2610
-            case NoteModel.Type.ExKnockLV:
-            case NoteModel.Type.ExKnockRV:
-            case NoteModel.Type.ExKnockLP:
-            case NoteModel.Type.ExKnockRP:
-            // SideHold → 2610
-            case NoteModel.Type.KnockHLV:
-            case NoteModel.Type.KnockHRV:
-            case NoteModel.Type.KnockHLP:
-            case NoteModel.Type.KnockHRP:
-            case NoteModel.Type.KnockHLW:
-            case NoteModel.Type.KnockHRW:
-            case NoteModel.Type.KnockHLK:
-            case NoteModel.Type.KnockHRK:
-            // ExSideHold → 2610
-            case NoteModel.Type.ExKnockHLV:
-            case NoteModel.Type.ExKnockHRV:
-            case NoteModel.Type.ExKnockHLP:
-            case NoteModel.Type.ExKnockHRP:
-                rq = 2610;
-                return true;
-            // Flick / ExFlick → 2590
-            case NoteModel.Type.FlickL:
-            case NoteModel.Type.FlickR:
-            case NoteModel.Type.ExFlickL:
-            case NoteModel.Type.ExFlickR:
-                rq = 2590;
-                return true;
-            // Each mine types needs their own queue because they
-            // are based on vertex coloring instead of UV mapping,
-            // so GPU instancing cannot work across type. We need
-            // to place each type's drawcall together to get them
-            // properly batched.
-            case NoteModel.Type.ShellNormal:
-                rq = 2655;
-                return true;
-            case NoteModel.Type.ShellHard:
-                rq = 2660;
-                return true;
-            case NoteModel.Type.ShellDanger:
-                rq = 2665;
-                return true;
-            case NoteModel.Type.NeedleNormal:
-                rq = 2670;
-                return true;
-            case NoteModel.Type.NeedleHard:
-                rq = 2675;
-                return true;
-            case NoteModel.Type.NeedleDanger:
-                rq = 2680;
-                return true;
-            case NoteModel.Type.RectNormal:
-                rq = 2685;
-                return true;
-            case NoteModel.Type.RectHard:
-                rq = 2690;
-                return true;
-            case NoteModel.Type.RectDanger:
-                rq = 2695;
-                return true;
-
-            default:
-                rq = 0;
-                return false;
-        }
-    }
-
-    [MonoModReplace]
-    public new NotesCacheItem createNoteModel(NoteModel noteModel)
-    {
-        if (_instancedMaterials == null) _instancedMaterials = new Dictionary<int, Dictionary<int, Material>>();
-        if (_processedItems == null) _processedItems = new HashSet<int>();
-        if (_mirrorApplied == null) _mirrorApplied = new HashSet<int>();
-
-        var notesCache = _noteCacheList[(int)noteModel.type];
-        var notesCacheItem = notesCache.pop();
-
-        var itemKey = ((int)noteModel.type << 16) | notesCacheItem.index;
-        if (!_processedItems.Contains(itemKey))
-        {
-            _processedItems.Add(itemKey);
-
-            var rqBase = getOptimalRenderQueue(noteModel.type, out var rq)
-                ? rq
-                : noteModel.renderQueue;
-
-            if (!_instancedMaterials.TryGetValue(rqBase, out var matCache))
-            {
-                matCache = new Dictionary<int, Material>();
-                _instancedMaterials[rqBase] = matCache;
-            }
-
-            var renderers = notesCacheItem.go.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in renderers)
-            {
-                var shared = renderer.sharedMaterial;
-                if (shared == null) continue;
-
-                // Only same mat+mesh can be placed in the same queue to ensure batching
-                var meshFilter = renderer.GetComponent<MeshFilter>();
-                var mesh = meshFilter != null ? meshFilter.sharedMesh : null;
-                const int prime = 397;
-                var matMeshKey = (shared.GetInstanceID() * prime) ^ (mesh != null ? mesh.GetInstanceID() : 0);
-
-                if (!matCache.TryGetValue(matMeshKey, out var instanced))
-                {
-                    instanced = new Material(shared)
-                    {
-                        renderQueue = rqBase + matCache.Count
-                    };
-                    matCache[matMeshKey] = instanced;
-                }
-                renderer.sharedMaterial = instanced;
-            }
-        }
-
-
-        //Great Rotation Tech
-        if (noteModel.mirror && !_mirrorApplied.Contains(itemKey))
-        {
-            _mirrorApplied.Add(itemKey);
-            var mrs = notesCacheItem.go.GetComponentsInChildren<Renderer>(true);
-
-            // This is clearly problematic but works for now
-            // Could be erroneous for mines, but they are not subjected to mirroring
-            foreach (var renderer in mrs)
-            {
-                renderer.transform.rotation = Quaternion.Euler(0f, 0, 180f) * renderer.transform.rotation;
-            }
-
-            // MaterialPropertyBlock mpb = new MaterialPropertyBlock();
-            // for (int m = 0; m < mrs.Length; m++)
-            // {
-            //     mrs[m].GetPropertyBlock(mpb);
-            //     mpb.SetFloat(_mirrorID, 1f);
-            //     mrs[m].SetPropertyBlock(mpb);
-            // }
-        }
-
-        return notesCacheItem;
-    }
 
     [MonoModReplace]
     public new void update()

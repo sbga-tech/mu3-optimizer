@@ -6,7 +6,7 @@ using MonoMod;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabSocketCaching")]
 public class patch_ListenSocket : ListenSocket
 {
     [MonoModIgnore] private NFSocket _socket;

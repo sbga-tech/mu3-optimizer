@@ -3,10 +3,19 @@ name: Build and Patch
 on:
   workflow_dispatch:
   workflow_call:
+    secrets:
+      UNITY_EMAIL:
+        required: true
+      UNITY_PASSWORD:
+        required: true
+      MU3_REFERENCE_REPO:
+        required: true
+      MU3_REFERENCE_PAT:
+        required: true
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     defaults:
       run:
@@ -26,18 +35,15 @@ jobs:
           token: ${{ secrets.MU3_REFERENCE_PAT }}
           path: mu3-reference
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Build
-        run: dotnet build Steroid.sln -c Release
-
-      - name: Run MonoMod
+      - name: Install native cross compiler
         run: |
-          cd bin/Release/net35
-          ./MonoMod.exe Assembly-CSharp.dll
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc-mingw-w64-x86-64
+          rustup target add x86_64-pc-windows-gnu
+
+      - name: Build assemblies and patches
+        timeout-minutes: 30
+        run: ./build.sh all
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -46,3 +52,5 @@ jobs:
           path: |
             mu3-optimizer/bin/Release/net35/Assembly-CSharp.Steroid.mm.dll
             mu3-optimizer/bin/Release/net35/AMDaemon.NET.Steroid.mm.dll
+            mu3-optimizer/bin/Release/net35/MONOMODDED_Assembly-CSharp.dll
+            mu3-optimizer/bin/Release/net35/MONOMODDED_AMDaemon.NET.dll

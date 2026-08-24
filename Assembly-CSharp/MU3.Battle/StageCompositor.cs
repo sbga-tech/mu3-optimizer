@@ -1,5 +1,4 @@
 using System;
-using MonoMod.InlineRT;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -88,9 +87,9 @@ namespace MU3.Battle
             _helper.allowHDR = true;
             _helper.allowMSAA = false;
             
-            _stageFPS = MonoMod.RenderingConfig.StageFPS;
-            _bgMergeFPS = MonoMod.RenderingConfig.BGMergeFPS;
-            _fxFPS = MonoMod.RenderingConfig.FXFPS;
+            _stageFPS = RenderLayersConfig.StageFPS;
+            _bgMergeFPS = RenderLayersConfig.BGMergeFPS;
+            _fxFPS = RenderLayersConfig.FXFPS;
             
         }
 

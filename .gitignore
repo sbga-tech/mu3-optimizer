@@ -1,7 +1,10 @@
 .idea
+.env
 bin
 obj
+tools
 *.DotSettings.user
 captures
-old
+/old
 venv
+.DS_Store

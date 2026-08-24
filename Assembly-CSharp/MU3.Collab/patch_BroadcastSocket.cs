@@ -5,7 +5,7 @@ using MonoMod;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabSocketCaching")]
 public class patch_BroadcastSocket : BroadcastSocket
 {
     [MonoModIgnore] private IPEndPoint _broadcastAddress;

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MU3.Notes;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("NoteBatching")]
 public class patch_NoteModel
 {
 

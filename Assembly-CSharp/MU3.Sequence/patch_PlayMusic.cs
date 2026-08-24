@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace MU3.Sequence;
 
+[MonoModIfFlag("NoUICameraDuringPlay")]
 public class patch_PlayMusic : PlayMusic
 {
 
@@ -24,7 +25,6 @@ public class patch_PlayMusic : PlayMusic
 
     private extern void orig_onFinishTips(GameObject tips);
     
-    [MonoModIfFlag("NoUICameraDuringPlay")]
     private void onFinishTips(GameObject tips)
     {
         orig_onFinishTips(tips);

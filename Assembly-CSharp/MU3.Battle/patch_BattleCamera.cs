@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MU3.Battle;
 
-[MonoModIfFlag("BetterRendering")]
+[MonoModIfFlag("RenderLayers")]
 public class patch_BattleCamera : BattleCamera
 {
 
@@ -131,7 +131,7 @@ public class patch_BattleCamera : BattleCamera
     private void Leave_StartCutscene()
     {
         orig_Leave_StartCutscene();
-        if (RenderingConfig.DisableShadows)
+        if (RenderLayersConfig.DisableShadows)
             DisableShadows();
     }
 

@@ -1,9 +1,10 @@
 using System;
 using MonoMod;
+using MU3.DB;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabMemberListCompaction")]
 public static class patch_Setting
 {
     public class Host
@@ -16,13 +17,13 @@ public static class patch_Setting
 
         [MonoModIgnore] private extern void executeBroadcast();
         [MonoModIgnore] private extern void executeAccept();
-        [MonoModIgnore] public extern void updateState(float deltaTime);
 
 
         [MonoModReplace]
         public void update()
         {
-            updateState(-1f);
+            ((RD1.SSS.StateMachine<Setting.Host, CollabSettingHostStateID>)(object)this)
+                .updateState(-1f);
             executeBroadcast();
             executeAccept();
             _udpSocket.recv();

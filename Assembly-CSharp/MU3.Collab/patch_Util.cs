@@ -3,7 +3,7 @@ using MonoMod;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabSocketCaching")]
 public static class patch_Util
 {
     [MonoModReplace]

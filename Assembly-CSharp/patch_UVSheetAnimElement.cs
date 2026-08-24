@@ -3,7 +3,7 @@ using MonoMod;
 using UnityEngine;
 
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("UVAnimation")]
 public class patch_UVSheetAnimElement : UVSheetAnimElement
 {
     private MaterialPropertyBlock _mpb;

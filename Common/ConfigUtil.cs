@@ -1,14 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using MonoMod.InlineRT;
 
 namespace MonoMod;
 
-[MonoModCustomMethodAttribute(nameof(MonoModRules.PatchIniConfig))]
-class PatchIniConfigAttribute : Attribute
+[MonoModCustomAttribute(nameof(MonoModRules.IniConfig))]
+[AttributeUsage(AttributeTargets.Class)]
+class IniConfigAttribute : Attribute
 {
 }
 
@@ -33,26 +36,43 @@ class IniFieldAttribute : Attribute
 
 static partial class MonoModRules
 {
-    public static void PatchIniConfig(MethodDefinition method, CustomAttribute attrib)
+    private const string OriginalConfigConstructorName = "__IniConfigOriginalCctor";
+
+    internal static string IniPath => Environment.GetEnvironmentVariable("MU3_MODS_CONFIG_PATH") ?? "mu3.ini";
+
+    public static void IniConfig(TypeDefinition type, CustomAttribute attribute)
     {
-        if (method is not { HasBody: true })
-            return;
+        if (type == null)
+            throw new ArgumentNullException(nameof(type));
 
-        var type = method.DeclaringType;
-        var il = method.Body.GetILProcessor();
-        method.Body.Instructions.Clear();
+        var original = type.Methods.SingleOrDefault(method => method.IsConstructor && method.IsStatic);
+        if (original == null)
+            throw new InvalidOperationException(type.FullName + " must declare a static constructor");
 
+        original.Name = OriginalConfigConstructorName;
+        original.IsSpecialName = false;
+        original.IsRuntimeSpecialName = false;
+
+        var generated = new MethodDefinition(
+            ".cctor",
+            MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig |
+            MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+            type.Module.TypeSystem.Void);
+        type.Methods.Add(generated);
+
+        var il = generated.Body.GetILProcessor();
         using var ini = new IniFile(IniPath);
 
         foreach (var field in type.Fields)
         {
-            var iniAttr = field.CustomAttributes
-                .FirstOrDefault(a => a.AttributeType.Name == nameof(IniFieldAttribute));
-            if (iniAttr == null) continue;
+            var iniAttribute = field.CustomAttributes
+                .FirstOrDefault(candidate => candidate.AttributeType.Name == nameof(IniFieldAttribute));
+            if (iniAttribute == null)
+                continue;
 
-            var section = (string)iniAttr.ConstructorArguments[0].Value;
-            var key = (string)iniAttr.ConstructorArguments[1].Value;
-            var defaultValue = iniAttr.ConstructorArguments[2].Value;
+            var section = (string)iniAttribute.ConstructorArguments[0].Value;
+            var key = (string)iniAttribute.ConstructorArguments[1].Value;
+            var defaultValue = iniAttribute.ConstructorArguments[2].Value;
 
             switch (field.FieldType.MetadataType)
             {
@@ -60,7 +80,7 @@ static partial class MonoModRules
                     il.Emit(OpCodes.Ldc_R4, ini.getFloatValue(section, key, (float)(double)defaultValue));
                     break;
                 case MetadataType.Double:
-                    il.Emit(OpCodes.Ldc_R8, ini.getFloatValue(section, key, (float)(double)defaultValue));
+                    il.Emit(OpCodes.Ldc_R8, (double)ini.getFloatValue(section, key, (float)(double)defaultValue));
                     break;
                 case MetadataType.Boolean:
                     il.Emit(ini.getIntValue(section, key, (int)(double)defaultValue) != 0
@@ -71,17 +91,74 @@ static partial class MonoModRules
                     il.Emit(OpCodes.Ldc_I4, ini.getIntValue(section, key, (int)(double)defaultValue));
                     break;
                 case MetadataType.String:
-                    var strDefault = defaultValue != null ? (string) defaultValue : "";
-                    il.Emit(OpCodes.Ldstr, ini.getValue(section, key, strDefault));
+                    var stringDefault = defaultValue != null ? (string)defaultValue : "";
+                    il.Emit(OpCodes.Ldstr, ini.getValue(section, key, stringDefault));
                     break;
                 default:
-                    continue;
+                    throw new NotSupportedException("Unsupported INI field type: " + field.FullName);
             }
 
             il.Emit(OpCodes.Stsfld, field);
+            field.CustomAttributes.Remove(iniAttribute);
         }
 
+        il.Emit(OpCodes.Call, original);
         il.Emit(OpCodes.Ret);
+        type.CustomAttributes.Remove(attribute);
+    }
+
+    internal static void InitializeConfig(ModuleDefinition module)
+    {
+        if (module == null)
+            throw new ArgumentNullException(nameof(module));
+
+        var configs = module.Types
+            .SelectMany(SelfAndNestedTypes)
+            .Where(type => FindIniConfigAttribute(type) != null)
+            .ToArray();
+
+        foreach (var config in configs)
+        {
+            var attribute = FindIniConfigAttribute(config);
+            IniConfig(config, attribute);
+            MonoModRule.Modder.ExecuteRules(config);
+            StripPatchTimeConstructor(config);
+        }
+
+        foreach (var type in module.Types.Where(type =>
+                     type.FullName == "MonoMod.IniFieldAttribute" ||
+                     type.FullName == "MonoMod.IniConfigAttribute").ToArray())
+        {
+            module.Types.Remove(type);
+        }
+    }
+
+    private static CustomAttribute FindIniConfigAttribute(TypeDefinition type)
+    {
+        return type.CustomAttributes.FirstOrDefault(attribute =>
+            attribute.AttributeType.FullName == "MonoMod.IniConfigAttribute");
+    }
+
+    private static IEnumerable<TypeDefinition> SelfAndNestedTypes(TypeDefinition type)
+    {
+        yield return type;
+        foreach (var nested in type.NestedTypes)
+        foreach (var descendant in SelfAndNestedTypes(nested))
+            yield return descendant;
+    }
+
+    private static void StripPatchTimeConstructor(TypeDefinition config)
+    {
+        var generated = config.Methods.Single(method => method.IsConstructor && method.IsStatic);
+        var original = config.Methods.Single(method => method.Name == OriginalConfigConstructorName);
+        var originalCall = generated.Body.Instructions.Single(instruction =>
+            instruction.OpCode == OpCodes.Call &&
+            instruction.Operand is MethodReference method &&
+            method.Resolve() == original);
+
+        // Preserve only the generated, constant field assignments in the target.
+        generated.Body.Instructions.Remove(originalCall);
+        config.Methods.Remove(original);
     }
 
     // ReSharper disable all

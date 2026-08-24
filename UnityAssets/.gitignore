@@ -1,0 +1,8 @@
+Build
+.AssetBundleStage
+.CollectedAssetBundles
+Library
+Temp
+Logs
+obj
+UserSettings

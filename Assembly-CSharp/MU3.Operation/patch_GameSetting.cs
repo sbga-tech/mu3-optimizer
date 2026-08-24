@@ -5,7 +5,7 @@ using MU3.Skill;
 namespace MU3.Operation;
 
 
-[MonoModIfFlag("BoostLoginRequests")]
+[MonoModIfFlag("LoginRequestsBatching")]
 public class patch_GameSetting : GameSetting
 {
     

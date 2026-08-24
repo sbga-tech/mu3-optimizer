@@ -2,7 +2,7 @@ using System;
 using MonoMod;
 using UnityEngine;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("UVAnimation")]
 public class patch_UVScroll : UVScroll
 {
     private static int _MainTex_ST; 

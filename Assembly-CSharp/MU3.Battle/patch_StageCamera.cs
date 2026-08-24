@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MU3.Battle;
 
-[MonoModIfFlag("BetterRendering")]
+[MonoModIfFlag("RenderLayers")]
 public class patch_StageCamera : StageCamera
 {
     [MonoModIgnore]

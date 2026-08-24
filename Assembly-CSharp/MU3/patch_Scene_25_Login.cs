@@ -14,7 +14,7 @@ using UnityEngine;
 
 namespace MU3;
 
-[MonoModIfFlag("BoostLoginRequests")]
+[MonoModIfFlag("AsyncLoginRequests")]
 public class patch_Scene_25_Login : Scene_25_Login
 {
 

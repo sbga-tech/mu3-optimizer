@@ -6,25 +6,25 @@ using UnityEngine;
 
 namespace MU3.Notes;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("PrimitiveMeshEmission")]
 public static class patch_JointUtil
 {
     [MonoModIgnore] private static PrimitiveMesh.JointNotePrimParam _jointNotePrimParam;
     [MonoModIgnore] private static PrimitiveMesh.JointNoteWallParam _jointNoteWallParam;
     [MonoModIgnore] private static PrimitiveMesh.JointNoteQuadRangeParam _jointNoteQuadRangeParam;
 
-    private static NotesPrimitiveManager _prim;
+    private static patch_NotesPrimitiveManager _prim;
     private static int _primFrame = int.MinValue;
     private static float _zColRear;
     private static int _zColRearFrame = int.MinValue;
 
-    private static NotesPrimitiveManager Prim()
+    private static patch_NotesPrimitiveManager Prim()
     {
         var f = Time.frameCount;
         if (_primFrame != f)
         {
             _primFrame = f;
-            _prim = SingletonMonoBehaviour<GameEngine>.instance.notesPrimitiveManager;
+            _prim = (patch_NotesPrimitiveManager)SingletonMonoBehaviour<GameEngine>.instance.notesPrimitiveManager;
         }
         return _prim;
     }
@@ -46,6 +46,16 @@ public static class patch_JointUtil
     {
         if (CustomMath.Abs(x0L - x0R) + CustomMath.Abs(x1L - x1R) < 1e-05f || CustomMath.Abs(z1 - z0) < 1e-05f)
             return;
+
+        var mgr = Prim();
+        var fast = mgr.fastMesh((int)type);
+        if (fast != null)
+        {
+            fast.fastJointPrim(x0L, x0R, z0, x1L, x1R, z1, u0L, u0R, u1L, u1R, v0, v1, y,
+                ref col0, ref col1);
+            return;
+        }
+
         _jointNotePrimParam.x0L = x0L;
         _jointNotePrimParam.x0R = x0R;
         _jointNotePrimParam.z0 = z0;
@@ -61,12 +71,20 @@ public static class patch_JointUtil
         _jointNotePrimParam.y = y;
         _jointNotePrimParam.col0 = col0;
         _jointNotePrimParam.col1 = col1;
-        Prim().addJointNotePrim(type, _jointNotePrimParam);
+        mgr.addJointNotePrim(type, _jointNotePrimParam);
     }
 
     [MonoModReplace]
     public static void drawWall(NotesPrimitiveManager.MeshType type, float x0, float z0, float x1, float z1, float yBtm, float yTop, Color colBtm, Color colTop)
     {
+        var mgr = Prim();
+        var fast = mgr.fastMesh((int)type);
+        if (fast != null)
+        {
+            fast.fastJointWall(x0, z0, x1, z1, yBtm, yTop, ref colBtm, ref colTop);
+            return;
+        }
+
         _jointNoteWallParam.x0 = x0;
         _jointNoteWallParam.z0 = z0;
         _jointNoteWallParam.x1 = x1;
@@ -75,7 +93,7 @@ public static class patch_JointUtil
         _jointNoteWallParam.yTop = yTop;
         _jointNoteWallParam.colBtm = colBtm;
         _jointNoteWallParam.colTop = colTop;
-        Prim().addJointNoteWall(type, _jointNoteWallParam);
+        mgr.addJointNoteWall(type, _jointNoteWallParam);
     }
 
     [MonoModReplace]
@@ -87,6 +105,16 @@ public static class patch_JointUtil
             || (CustomMath.Abs(edgeV.sqrMagnitude) < 1e-06f && CustomMath.Abs((posRU - posRD).sqrMagnitude) < 1e-06f))
             return;
 
+        var isRight = edgeH.x * edgeV.y - edgeV.x * edgeH.y < 0f;
+        var mgr = Prim();
+        var fast = mgr.fastMesh((int)type);
+        if (fast != null)
+        {
+            fast.fastJointQuadRange(ref posLD, ref posRD, ref posLU, ref posRU, vD, vU, y,
+                ref colD, ref colU, isRight);
+            return;
+        }
+
         _jointNoteQuadRangeParam.posLD = posLD;
         _jointNoteQuadRangeParam.posRD = posRD;
         _jointNoteQuadRangeParam.posLU = posLU;
@@ -96,7 +124,7 @@ public static class patch_JointUtil
         _jointNoteQuadRangeParam.y = y;
         _jointNoteQuadRangeParam.colD = colD;
         _jointNoteQuadRangeParam.colU = colU;
-        _jointNoteQuadRangeParam.isRight = edgeH.x * edgeV.y - edgeV.x * edgeH.y < 0f;
-        Prim().addJointNoteQuadRange(type, _jointNoteQuadRangeParam);
+        _jointNoteQuadRangeParam.isRight = isRight;
+        mgr.addJointNoteQuadRange(type, _jointNoteQuadRangeParam);
     }
 }

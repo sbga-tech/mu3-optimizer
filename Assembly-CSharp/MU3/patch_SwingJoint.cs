@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MU3;
 
-[MonoModIfFlag("BetterRendering")]
+[MonoModIfFlag("SwingJointPhysics")]
 public class patch_SwingJoint : SwingJoint
 {
     [MonoModIgnore] private Transform _childNode;

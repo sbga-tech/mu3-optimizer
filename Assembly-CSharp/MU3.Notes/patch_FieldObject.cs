@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace MU3.Notes;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("LaneGeometryCulling")]
 public class patch_FieldObject : FieldObject
 {
     private int[] _lanesForeIdx;

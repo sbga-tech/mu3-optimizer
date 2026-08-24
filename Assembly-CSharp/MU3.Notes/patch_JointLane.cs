@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MU3.Notes;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("LaneGeometryCulling")]
 public class patch_JointLane : JointLane
 {
     [MonoModIgnore] private JointManager.LaneInitParam _initParam;

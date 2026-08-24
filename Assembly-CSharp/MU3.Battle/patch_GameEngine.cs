@@ -7,7 +7,7 @@ namespace MU3.Battle;
 // Hooks all GameEngine methods that trigger FX_Background (L30) effects,
 // notifying StageCompositor to enable the L30 render pass on demand.
 
-[MonoModIfFlag("BetterRendering")]
+[MonoModIfFlag("RenderLayers")]
 public class patch_GameEngine : GameEngine
 {
     private const float Margin = 0f;

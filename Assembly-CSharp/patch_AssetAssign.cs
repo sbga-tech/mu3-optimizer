@@ -3,7 +3,7 @@ using MU3.Mod.Assets;
 using Sxc.Unity;
 using UnityEngine;
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("NoteBatching")]
 public class patch_AssetAssign : AssetAssign
 {
     [MonoModIgnore]
@@ -11,19 +11,19 @@ public class patch_AssetAssign : AssetAssign
     
     private extern void orig_Awake();
     
-    private void LoadNotes(AssetBundle bundle)
+    private void LoadNotes()
     {
         // nt_tap_red.prefab
         // nt_tap_grn.prefab
         // nt_tap_blu.prefab
-        var tapRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_red.prefab");
-        var tapGreen = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_grn.prefab");
-        var tapBlue = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_blu.prefab");
-        var tapBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_blk.prefab");
-        var tapWhite = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_wht.prefab");
+        var tapRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_red.prefab");
+        var tapGreen = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_grn.prefab");
+        var tapBlue = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_blu.prefab");
+        var tapBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_blk.prefab");
+        var tapWhite = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_wht.prefab");
         
-        var tapRedAlt = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_win.prefab");
-        var tapGreenAlt = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_ygr.prefab");
+        var tapRedAlt = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_win.prefab");
+        var tapGreenAlt = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_ygr.prefab");
         
         _noteAssign.tapRed = tapRed;
         _noteAssign.tapGreen = tapGreen;
@@ -36,11 +36,11 @@ public class patch_AssetAssign : AssetAssign
         // nt_ex_red.prefab
         // nt_ex_grn.prefab
         // nt_ex_blu.prefab
-        var tapExRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_red.prefab");
-        var tapExGreen = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_grn.prefab");
-        var tapExBlue = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_blu.prefab");
-        var tapExRedAlt = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_win.prefab");
-        var tapExGreenAlt = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_ygr.prefab");
+        var tapExRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_red.prefab");
+        var tapExGreen = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_grn.prefab");
+        var tapExBlue = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_blu.prefab");
+        var tapExRedAlt = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_win.prefab");
+        var tapExGreenAlt = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_ygr.prefab");
         
         _noteAssign.crTapRed = tapExRed;
         _noteAssign.crTapGreen = tapExGreen;
@@ -51,9 +51,9 @@ public class patch_AssetAssign : AssetAssign
         // nt_end_red.prefab
         // nt_end_grn.prefab
         // nt_end_blu.prefab
-        var holdEndRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_end_red.prefab");
-        var holdEndGreen = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_end_grn.prefab");
-        var holdEndBlue = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_end_blu.prefab");
+        var holdEndRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_red.prefab");
+        var holdEndGreen = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_grn.prefab");
+        var holdEndBlue = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_blu.prefab");
 
         
         _noteAssign.holdEndRed = holdEndRed;
@@ -64,10 +64,10 @@ public class patch_AssetAssign : AssetAssign
         
         // nt_tap_vio.prefab
         // nt_tap_pur.prefab
-        var wallLeft = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_vio.prefab");
-        var wallRight = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_pur.prefab");
-        var wallBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_sblk.prefab");
-        var wallWhite = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_tap_swht.prefab");
+        var wallLeft = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_vio.prefab");
+        var wallRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_pur.prefab");
+        var wallBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_sblk.prefab");
+        var wallWhite = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_tap_swht.prefab");
         
         _noteAssign.sideTapViolet = wallLeft;
         _noteAssign.sideTapPurple = wallRight;
@@ -76,18 +76,18 @@ public class patch_AssetAssign : AssetAssign
         
         // nt_ex_vio.prefab
         // nt_ex_pur.prefab
-        var wallExLeft = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_vio.prefab");
-        var wallExRight = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_pur.prefab");
+        var wallExLeft = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_vio.prefab");
+        var wallExRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_pur.prefab");
         
         _noteAssign.sideCrTapViolet = wallExLeft;
         _noteAssign.sideCrTapPurple = wallExRight;
         
         // nt_hold_vio.prefab
         // nt_hold_pur.prefab
-        var wallHoldLeft = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_hold_vio.prefab");
-        var wallHoldRight = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_hold_pur.prefab");
-        var wallHoldBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_hold_blk.prefab");
-        var wallHoldWhite = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_hold_wht.prefab");
+        var wallHoldLeft = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_hold_vio.prefab");
+        var wallHoldRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_hold_pur.prefab");
+        var wallHoldBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_hold_blk.prefab");
+        var wallHoldWhite = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_hold_wht.prefab");
         
         _noteAssign.sideHoldViolet = wallHoldLeft;
         _noteAssign.sideHoldPurple = wallHoldRight;
@@ -96,47 +96,47 @@ public class patch_AssetAssign : AssetAssign
         
         // nt_exhold_vio.prefab
         // nt_exhold_pur.prefab
-        var wallExHoldLeft = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_exhold_vio.prefab");
-        var wallExHoldRight = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_exhold_pur.prefab");
+        var wallExHoldLeft = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_exhold_vio.prefab");
+        var wallExHoldRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_exhold_pur.prefab");
         
         _noteAssign.sideCrHoldViolet = wallExHoldLeft;
         _noteAssign.sideCrHoldPurple = wallExHoldRight;
         
         // nt_holdend_vio.prefab
         // nt_holdend_pur.prefab
-        var wallHoldEndLeft = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_holdend_vio.prefab");
-        var wallHoldEndRight = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_holdend_pur.prefab");
-        var holdEndBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_end_blk.prefab");
-        var holdEndWhite = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_end_wht.prefab");
+        var wallHoldEndLeft = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_holdend_vio.prefab");
+        var wallHoldEndRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_holdend_pur.prefab");
+        var holdEndBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_blk.prefab");
+        var holdEndWhite = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_wht.prefab");
         
         _noteAssign.sideHoldEndViolet = wallHoldEndLeft;
         _noteAssign.sideHoldEndPurple = wallHoldEndRight;
         _noteAssign.sideHoldEndBlack = holdEndBlack;
         _noteAssign.sideHoldEndWhite = holdEndWhite;
         
-        var flick = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_flick.prefab");
-        var flickEx = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_ex_flick.prefab");
+        var flick = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_flick.prefab");
+        var flickEx = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_ex_flick.prefab");
         
         _noteAssign.flick = flick;
         _noteAssign.crFlick = flickEx;
         
-        var mineRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_mine_red.prefab");
-        var minePurple = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_mine_pur.prefab");
+        var mineRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_mine_red.prefab");
+        var minePurple = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_mine_pur.prefab");
         
         _noteAssign.shellNormal = mineRed;
         _noteAssign.shellHard = minePurple;
         
-        var mineNeedleRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_mineneedle2_red.prefab");
-        var mineNeedlePurple = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_mineneedle2_pur.prefab");
-        var mineNeedleBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_mineneedle2_blk.prefab");
+        var mineNeedleRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_mineneedle2_red.prefab");
+        var mineNeedlePurple = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_mineneedle2_pur.prefab");
+        var mineNeedleBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_mineneedle2_blk.prefab");
         
         _noteAssign.needleNormal = mineNeedleRed;
         _noteAssign.needleHard = mineNeedlePurple;
         _noteAssign.needleDanger = mineNeedleBlack;
         
-        var mineRectRed = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_minerect2_red.prefab");
-        var mineRectPurple = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_minerect2_pur.prefab");
-        var mineRectBlack = bundle.LoadAsset<GameObject>("Assets/GameObject/nt_minerect2_blk.prefab");
+        var mineRectRed = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_minerect2_red.prefab");
+        var mineRectPurple = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_minerect2_pur.prefab");
+        var mineRectBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_minerect2_blk.prefab");
         
         _noteAssign.rectNormal = mineRectRed;
         _noteAssign.rectHard = mineRectPurple;
@@ -175,17 +175,14 @@ public class patch_AssetAssign : AssetAssign
     
     private new void Awake()
     {
-        var bundle = AssetBundle.LoadFromMemory(NoteOptimizationBundle.Data);
-        if (bundle != null)
+        try
         {
-            LoadNotes(bundle);
+            LoadNotes();
         }
-        else
+        catch (System.Exception exception)
         {
-            Debug.LogError("Failed to load note optimization asset bundle!");
+            Debug.LogError("Failed to load note optimization asset bundle! " + exception);
         }
-
-        bundle.Unload(false);
 
         orig_Awake();
         

@@ -4,7 +4,7 @@ using MU3.DB;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabHeartbeatCaching")]
 public class patch_HeartBeat : HeartBeat
 {
     [MonoModIgnore] private int _recvNumber;

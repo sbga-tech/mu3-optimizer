@@ -14,10 +14,12 @@ static partial class MonoModRules
 {
     static MonoModRules()
     {
-        ApplyFlags();
-        if (!MonoModRule.Flag.Get("NoAlloc"))
+        InitializePatch();
+        if (!MonoModRule.Flag.Get("InlinedAMDaemonCalls"))
             return;
-        Console.WriteLine("[NoAlloc] " + Rewrite(MonoModRule.Modder.Module));
+        var result = Rewrite(MonoModRule.Modder.Module);
+        if (!result.StartsWith("rewrote ", StringComparison.Ordinal))
+            throw new InvalidOperationException("InlinedAMDaemonCalls rewrite failed: " + result);
     }
 
     static string Rewrite(ModuleDefinition module)

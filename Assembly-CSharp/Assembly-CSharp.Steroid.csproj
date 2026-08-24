@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>Assembly-CSharp.Steroid.mm</AssemblyName>
-        <Version>0.0.3</Version>
+        <Version>0.0.7</Version>
         <TargetFramework>net35</TargetFramework>
         <Company>oshinop</Company>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -10,6 +10,10 @@
         <Platforms>x64</Platforms>
         <Configurations>Debug;Release</Configurations>
         <NoWarn>IDE0044,IDE0051,IDE0052,IDE1006,CS0414,CS0649,CS0626</NoWarn>
+    </PropertyGroup>
+    <PropertyGroup>
+        <AssetBundlesDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../UnityAssets/Build'))</AssetBundlesDir>
+        <NativeLibrariesDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../Native/Build'))</NativeLibrariesDir>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
@@ -29,6 +33,9 @@
         <ErrorReport>prompt</ErrorReport>
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
+    <PropertyGroup>
+        <DefineConstants>$(DefineConstants);MU3_ASSEMBLY_CSHARP</DefineConstants>
+    </PropertyGroup>
     <ItemGroup>
         <Reference Include="mscorlib"><HintPath>..\..\mu3-reference\mscorlib.dll</HintPath></Reference>
         <Reference Include="UnityEngine"><HintPath>..\..\mu3-reference\UnityEngine.dll</HintPath></Reference>
@@ -39,6 +46,10 @@
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
         <PackageReference Include="monomod" Version="20.5.21.5" />
         <Compile Include="..\Common\**\*.cs" Link="Common\%(RecursiveDir)%(Filename)%(Extension)" />
+        <AssetBundleFile Include="$(AssetBundlesDir)/*" />
+        <EmbeddedResource Include="@(AssetBundleFile)" LogicalName="MU3.Mod.Assets.Res.%(Filename)%(Extension)" />
+        <NativeLibraryFile Include="$(NativeLibrariesDir)/*" />
+        <EmbeddedResource Include="@(NativeLibraryFile)" LogicalName="MU3.Mod.Native.Res.%(Filename)%(Extension)" />
 
     </ItemGroup>
 </Project>

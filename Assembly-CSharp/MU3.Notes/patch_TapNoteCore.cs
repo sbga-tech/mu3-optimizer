@@ -7,7 +7,7 @@ using UnityEngine;
 namespace MU3.Notes;
 
 
-[MonoModIfFlag("BetterNotes")]
+[MonoModIfFlag("CachedNoteVisibility")]
 public class patch_TapNoteCore : TapNoteCore
 {
     private bool _activeItemTap;

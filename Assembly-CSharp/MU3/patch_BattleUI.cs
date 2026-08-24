@@ -1,4 +1,4 @@
-
+using System;
 using MonoMod;
 using UnityEngine;
 
@@ -11,6 +11,7 @@ public class patch_BattleUI : BattleUI
     
     private RenderMode[] _origRenderModes;
     private Camera[] _origCameras;
+    private Action<bool> _onUIOptimizeToggle;
 
     private extern void orig_Awake();
 
@@ -21,21 +22,24 @@ public class patch_BattleUI : BattleUI
         _cachedCanvases = GetComponentsInChildren<Canvas>();
         _origRenderModes = new RenderMode[_cachedCanvases.Length];
         _origCameras = new Camera[_cachedCanvases.Length];
-        patch_SystemUI.OnUIOptimizeToggle += enable =>
+        _onUIOptimizeToggle = enable =>
         {
             if (enable)
                 Optimize();
             else
                 Deoptimize();
         };
+        patch_SystemUI.OnUIOptimizeToggle += _onUIOptimizeToggle;
     }
 
-    private extern void orig_Update();
-
-    private void Update()
+    // OnUIOptimizeToggle is static: without this unsubscribe every destroyed
+    // BattleUI instance stays reachable and the invocation list grows across
+    // plays. BattleUI has no original OnDestroy.
+    private void OnDestroy()
     {
-        orig_Update();
+        patch_SystemUI.OnUIOptimizeToggle -= _onUIOptimizeToggle;
     }
+
 
     private void Optimize()
     {

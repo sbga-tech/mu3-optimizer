@@ -2,7 +2,7 @@
 
 namespace MU3.Client;
 
-[MonoModIfFlag("BoostLoginRequests")]
+[MonoModIfFlag("LoginRequestsBatching")]
 public class patch_PacketGetUserCharacter : PacketGetUserCharacter
 {
     [PatchDictAlloc]

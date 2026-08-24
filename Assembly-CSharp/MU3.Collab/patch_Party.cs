@@ -3,7 +3,7 @@ using MonoMod;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabMemberListCompaction")]
 public static class patch_Party
 {
     public class Recruit

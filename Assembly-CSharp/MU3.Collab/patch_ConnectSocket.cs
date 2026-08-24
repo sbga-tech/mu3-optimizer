@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace MU3.Collab;
 
-[MonoModIfFlag("NoAlloc")]
+[MonoModIfFlag("CollabSocketCaching")]
 public class patch_ConnectSocket : ConnectSocket
 {
     [MonoModIgnore] private IPEndPoint _socketAddr;
