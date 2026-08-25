@@ -42,6 +42,8 @@ ActiveNoteTraversal=1
 LaneGeometryCulling=1
 CachedNoteVisibility=1
 PrimitiveMeshEmission=1
+ScorePresentation=1
+JudgementPrewarm=1
 UVAnimation=1
 CollabSocketCaching=1
 CollabHeartbeatCaching=1
@@ -142,9 +144,17 @@ Caches the active state of tap, foot, hold-end, and hold-effect objects so `Game
 
 ### `PrimitiveMeshEmission`
 
-Writes lane and hold geometry directly into preallocated `List<T>` backing arrays, avoiding 18 `List.Add` calls for each textured quad and 14 for each wall quad. It publishes the final list sizes once before mesh upload, skips all four uploads on empty frames, and clears an empty mesh only when it previously held vertices. Degenerate quads are discarded before emission.
+Writes lane and hold draw commands into a preallocated command buffer, then emits all vertices, colors, UVs, and indices through the embedded native batch emitter. The final `List<T>` sizes are published once before mesh upload; empty frames skip all four uploads and only clear a mesh that previously held vertices. Degenerate quads are discarded before emission.
 
-If the runtime list layout is incompatible, the patch uses the normal `List.Add` path automatically.
+If the runtime list layout or native module is incompatible, the patch automatically replays the same commands through the managed backing-array emitter. If neither direct path is available, it retains the original `List.Add` behavior.
+
+### `ScorePresentation`
+
+Updates gameplay score, combo, life, skill, judgement, and result state synchronously for every note, but coalesces score-counter UI presentation to once per rendered frame. Repeated writes to the same counter within a chord publish only the final value before Unity's canvas update.
+
+### `JudgementPrewarm`
+
+Warms one real judgement UI instance, score presentation, the normal result effect, and the offscreen render path during battle setup before gameplay audio starts. It restores score, life, combo, note timing, pool cursors, animator state, effect-pool order, and particle state before chart play, moving first-use rendering work out of the first judgement frame.
 
 ### `UVAnimation`
 

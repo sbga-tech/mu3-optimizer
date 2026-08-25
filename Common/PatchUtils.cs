@@ -1,5 +1,6 @@
 using System;
 using Mono.Cecil;
+using Mono.Cecil.Cil;
 using MonoMod.InlineRT;
 
 namespace MonoMod;
@@ -13,8 +14,64 @@ static partial class MonoModRules
                           throw new InvalidOperationException("MonoMod.PatchConfig not found in " + module.Name);
 
         InitializeConfig(module);
+        ApplyPatchFlags(patchConfig);
         module.Types.Remove(patchConfig);
         PropagateNestedConditions(module);
+    }
+
+    private static void ApplyPatchFlags(TypeDefinition patchConfig)
+    {
+        MethodDefinition constructor = null;
+        foreach (var method in patchConfig.Methods)
+        {
+            if (method.IsConstructor && method.IsStatic)
+            {
+                constructor = method;
+                break;
+            }
+        }
+
+        if (constructor == null || !constructor.HasBody)
+            throw new InvalidOperationException("MonoMod.PatchConfig static constructor not found");
+
+        foreach (var field in patchConfig.Fields)
+        {
+            if (!field.IsPublic || !field.IsStatic || field.FieldType.MetadataType != MetadataType.Boolean)
+                continue;
+
+            Instruction valueLoad = null;
+            foreach (var instruction in constructor.Body.Instructions)
+            {
+                if (instruction.OpCode == OpCodes.Stsfld &&
+                    instruction.Operand is FieldReference reference &&
+                    reference.Resolve() == field)
+                {
+                    valueLoad = instruction.Previous;
+                    break;
+                }
+            }
+
+            if (valueLoad == null)
+                throw new InvalidOperationException("Patch flag value not generated for " + field.Name);
+            MonoModRule.Flag.Set(field.Name, ReadBooleanConstant(valueLoad));
+        }
+    }
+
+    private static bool ReadBooleanConstant(Instruction instruction)
+    {
+        switch (instruction.OpCode.Code)
+        {
+            case Code.Ldc_I4_0:
+                return false;
+            case Code.Ldc_I4_1:
+                return true;
+            case Code.Ldc_I4:
+                return (int)instruction.Operand != 0;
+            case Code.Ldc_I4_S:
+                return (sbyte)instruction.Operand != 0;
+            default:
+                throw new InvalidOperationException("Patch flag is not a constant boolean: " + instruction);
+        }
     }
 
     private static ModuleDefinition GetCurrentRulesModule()

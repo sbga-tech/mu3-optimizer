@@ -49,12 +49,10 @@ public static class patch_JointUtil
 
         var mgr = Prim();
         var fast = mgr.fastMesh((int)type);
-        if (fast != null)
-        {
-            fast.fastJointPrim(x0L, x0R, z0, x1L, x1R, z1, u0L, u0R, u1L, u1R, v0, v1, y,
-                ref col0, ref col1);
+        if (fast != null
+            && fast.fastJointPrim(x0L, x0R, z0, x1L, x1R, z1,
+                u0L, u0R, u1L, u1R, v0, v1, y, ref col0, ref col1))
             return;
-        }
 
         _jointNotePrimParam.x0L = x0L;
         _jointNotePrimParam.x0R = x0R;
@@ -79,11 +77,9 @@ public static class patch_JointUtil
     {
         var mgr = Prim();
         var fast = mgr.fastMesh((int)type);
-        if (fast != null)
-        {
-            fast.fastJointWall(x0, z0, x1, z1, yBtm, yTop, ref colBtm, ref colTop);
+        if (fast != null
+            && fast.fastJointWall(x0, z0, x1, z1, yBtm, yTop, ref colBtm, ref colTop))
             return;
-        }
 
         _jointNoteWallParam.x0 = x0;
         _jointNoteWallParam.z0 = z0;
@@ -108,12 +104,10 @@ public static class patch_JointUtil
         var isRight = edgeH.x * edgeV.y - edgeV.x * edgeH.y < 0f;
         var mgr = Prim();
         var fast = mgr.fastMesh((int)type);
-        if (fast != null)
-        {
-            fast.fastJointQuadRange(ref posLD, ref posRD, ref posLU, ref posRU, vD, vU, y,
-                ref colD, ref colU, isRight);
+        if (fast != null
+            && fast.fastJointQuadRange(ref posLD, ref posRD, ref posLU, ref posRU,
+                vD, vU, y, ref colD, ref colU, isRight))
             return;
-        }
 
         _jointNoteQuadRangeParam.posLD = posLD;
         _jointNoteQuadRangeParam.posRD = posRD;

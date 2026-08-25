@@ -15,19 +15,23 @@ public class patch_PrimitiveMesh : PrimitiveMesh
     [MonoModIgnore] private List<int> _triangles;
     [MonoModIgnore] private int _stripVertexCount;
 
-    // Fast emission: JointUtil quad data is written straight into the List
-    // backing arrays; LateUpdate fixes the sizes up once before upload.
-    // Bound after every setCapacity (the only place _items can reallocate).
+    // JointUtil writes into the List backing arrays. When the embedded native
+    // emitter is available, commands are queued and emitted in one call from
+    // LateUpdate. The same managed writers remain the exact fallback.
     private Vector3[] _fastVerts;
     private Color[] _fastCols;
     private Vector2[] _fastUV;
     private int[] _fastTris;
+    private NativeGeometryEmitter.Command[] _nativeCommands;
+    private int _nativeCommandCount;
     internal int _fastV;
     internal int _fastU;
     internal int _fastT;
     private bool _fastBound;
+    private bool _managedEmission;
+    private bool _listFallback;
 
-    internal bool fastReady { get { return _fastBound; } }
+    internal bool fastReady { get { return _fastBound && !_listFallback; } }
 
     public extern void orig_setCapacity(int verticesMax, int trianglesMax);
 
@@ -40,9 +44,7 @@ public class patch_PrimitiveMesh : PrimitiveMesh
     private void bindFast()
     {
         _fastBound = false;
-        _fastV = 0;
-        _fastU = 0;
-        _fastT = 0;
+        resetFastFrame();
 
         var getVerts = ListInternals<Vector3>.GetItems;
         var getCols = ListInternals<Color>.GetItems;
@@ -58,152 +60,299 @@ public class patch_PrimitiveMesh : PrimitiveMesh
         _fastUV = getUV(_uv);
         _fastTris = getTris(_triangles);
         _fastBound = _fastVerts != null && _fastCols != null && _fastUV != null && _fastTris != null;
+        if (!_fastBound)
+            return;
+
+        var commandCapacity = _fastVerts.Length / 4;
+        var triangleCapacity = _fastTris.Length / 6;
+        if (triangleCapacity < commandCapacity)
+            commandCapacity = triangleCapacity;
+        if (_nativeCommands == null || _nativeCommands.Length != commandCapacity)
+            _nativeCommands = new NativeGeometryEmitter.Command[commandCapacity];
     }
 
-    /// <summary>addJointNotePrim, writing the backing arrays directly.</summary>
-    internal void fastJointPrim(float x0L, float x0R, float z0, float x1L, float x1R, float z1,
+    private void resetFastFrame()
+    {
+        _nativeCommandCount = 0;
+        _fastV = 0;
+        _fastU = 0;
+        _fastT = 0;
+        _managedEmission = false;
+        _listFallback = false;
+    }
+
+    private bool hasCapacity(bool usesUv)
+    {
+        return _fastV + 4 <= _fastVerts.Length
+            && _fastV + 4 <= _fastCols.Length
+            && (!usesUv || _fastU + 4 <= _fastUV.Length)
+            && _fastT + 6 <= _fastTris.Length;
+    }
+
+    private bool canQueueNative()
+    {
+        return !_managedEmission
+            && _nativeCommands != null
+            && _nativeCommandCount < _nativeCommands.Length
+            && NativeGeometryEmitter.Available;
+    }
+
+    private void queueCommand(ref NativeGeometryEmitter.Command command, bool usesUv)
+    {
+        _nativeCommands[_nativeCommandCount++] = command;
+        _fastV += 4;
+        if (usesUv)
+            _fastU += 4;
+        _fastT += 6;
+    }
+
+    private void replayQueuedManaged()
+    {
+        if (_nativeCommandCount == 0)
+            return;
+
+        var vertex = 0;
+        var uv = 0;
+        var triangle = 0;
+        for (var i = 0; i < _nativeCommandCount; i++)
+        {
+            var command = _nativeCommands[i];
+            switch (command.Kind)
+            {
+                case NativeGeometryEmitter.Prim:
+                    writeJointPrim(ref command, ref vertex, ref uv, ref triangle);
+                    break;
+                case NativeGeometryEmitter.Wall:
+                    writeJointWall(ref command, ref vertex, ref triangle);
+                    break;
+                case NativeGeometryEmitter.QuadRange:
+                    writeJointQuadRange(ref command, ref vertex, ref uv, ref triangle);
+                    break;
+            }
+        }
+        _nativeCommandCount = 0;
+        _managedEmission = true;
+    }
+
+    private void prepareListFallback()
+    {
+        replayQueuedManaged();
+        ListInternals<Vector3>.SetSize(_vertices, _fastV);
+        ListInternals<Color>.SetSize(_colors, _fastV);
+        ListInternals<Vector2>.SetSize(_uv, _fastU);
+        ListInternals<int>.SetSize(_triangles, _fastT);
+        _fastV = 0;
+        _fastU = 0;
+        _fastT = 0;
+        _listFallback = true;
+    }
+
+    /// <summary>Queues or emits addJointNotePrim. False selects the original List path.</summary>
+    internal bool fastJointPrim(float x0L, float x0R, float z0, float x1L, float x1R, float z1,
         float u0L, float u0R, float u1L, float u1R, float v0, float v1, float y,
         ref Color col0, ref Color col1)
     {
-        int count = _fastV;
-        var verts = _fastVerts;
-        if (count + 4 > verts.Length)
-            return;
-
-        int u = _fastU;
-        var uv = _fastUV;
-        if (z0 < z1)
+        if (!hasCapacity(true))
         {
-            verts[count] = new Vector3(x0L, y, z0);
-            verts[count + 1] = new Vector3(x0R, y, z0);
-            verts[count + 2] = new Vector3(x1L, y, z1);
-            verts[count + 3] = new Vector3(x1R, y, z1);
-            uv[u] = new Vector2(u0L, v0);
-            uv[u + 1] = new Vector2(u0R, v0);
-            uv[u + 2] = new Vector2(u1L, v1);
-            uv[u + 3] = new Vector2(u1R, v1);
+            prepareListFallback();
+            return false;
         }
+
+        var command = new NativeGeometryEmitter.Command();
+        command.Kind = NativeGeometryEmitter.Prim;
+        command.P0 = x0L;
+        command.P1 = x0R;
+        command.P2 = z0;
+        command.P3 = x1L;
+        command.P4 = x1R;
+        command.P5 = z1;
+        command.P6 = u0L;
+        command.P7 = u0R;
+        command.P8 = u1L;
+        command.P9 = u1R;
+        command.P10 = v0;
+        command.P11 = v1;
+        command.P12 = y;
+        command.SetColors(ref col0, ref col1);
+        if (canQueueNative())
+            queueCommand(ref command, true);
         else
         {
-            verts[count] = new Vector3(x0R, y, z0);
-            verts[count + 1] = new Vector3(x0L, y, z0);
-            verts[count + 2] = new Vector3(x1R, y, z1);
-            verts[count + 3] = new Vector3(x1L, y, z1);
-            uv[u] = new Vector2(u0R, v0);
-            uv[u + 1] = new Vector2(u0L, v0);
-            uv[u + 2] = new Vector2(u1R, v1);
-            uv[u + 3] = new Vector2(u1L, v1);
+            replayQueuedManaged();
+            writeJointPrim(ref command, ref _fastV, ref _fastU, ref _fastT);
         }
-        var cols = _fastCols;
-        cols[count] = col0;
-        cols[count + 1] = col0;
-        cols[count + 2] = col1;
-        cols[count + 3] = col1;
-        int t = _fastT;
-        var tris = _fastTris;
-        tris[t] = count;
-        tris[t + 1] = count + 1;
-        tris[t + 2] = count + 2;
-        tris[t + 3] = count + 2;
-        tris[t + 4] = count + 1;
-        tris[t + 5] = count + 3;
-        _fastV = count + 4;
-        _fastU = u + 4;
-        _fastT = t + 6;
+        return true;
     }
 
-    /// <summary>addJointNoteWall, writing the backing arrays directly.</summary>
-    internal void fastJointWall(float x0, float z0, float x1, float z1, float yBtm, float yTop,
+    /// <summary>Queues or emits addJointNoteWall. False selects the original List path.</summary>
+    internal bool fastJointWall(float x0, float z0, float x1, float z1, float yBtm, float yTop,
         ref Color colBtm, ref Color colTop)
     {
-        int count = _fastV;
-        var verts = _fastVerts;
-        if (count + 4 > verts.Length)
-            return;
-
-        if (z0 < z1)
+        if (!hasCapacity(false))
         {
-            verts[count] = new Vector3(x0, yBtm, z0);
-            verts[count + 1] = new Vector3(x1, yBtm, z1);
-            verts[count + 2] = new Vector3(x0, yTop, z0);
-            verts[count + 3] = new Vector3(x1, yTop, z1);
+            prepareListFallback();
+            return false;
         }
+
+        var command = new NativeGeometryEmitter.Command();
+        command.Kind = NativeGeometryEmitter.Wall;
+        command.P0 = x0;
+        command.P1 = z0;
+        command.P2 = x1;
+        command.P3 = z1;
+        command.P4 = yBtm;
+        command.P5 = yTop;
+        command.SetColors(ref colBtm, ref colTop);
+        if (canQueueNative())
+            queueCommand(ref command, false);
         else
         {
-            verts[count] = new Vector3(x1, yBtm, z1);
-            verts[count + 1] = new Vector3(x0, yBtm, z0);
-            verts[count + 2] = new Vector3(x1, yTop, z1);
-            verts[count + 3] = new Vector3(x0, yTop, z0);
+            replayQueuedManaged();
+            writeJointWall(ref command, ref _fastV, ref _fastT);
         }
-        var cols = _fastCols;
-        cols[count] = colBtm;
-        cols[count + 1] = colBtm;
-        cols[count + 2] = colTop;
-        cols[count + 3] = colTop;
-        // The original appends no UVs for walls: the Wall mesh only ever
-        // receives drawWall quads, so its UV list stays empty and SetUVs
-        // clears the channel. _fastU intentionally not advanced.
-        int t = _fastT;
-        var tris = _fastTris;
-        tris[t] = count;
-        tris[t + 1] = count + 1;
-        tris[t + 2] = count + 2;
-        tris[t + 3] = count + 2;
-        tris[t + 4] = count + 1;
-        tris[t + 5] = count + 3;
-        _fastV = count + 4;
-        _fastT = t + 6;
+        return true;
     }
 
-    /// <summary>addJointNoteQuadRange, writing the backing arrays directly.</summary>
-    internal void fastJointQuadRange(ref Vector2 posLD, ref Vector2 posRD, ref Vector2 posLU,
+    /// <summary>Queues or emits addJointNoteQuadRange. False selects the original List path.</summary>
+    internal bool fastJointQuadRange(ref Vector2 posLD, ref Vector2 posRD, ref Vector2 posLU,
         ref Vector2 posRU, float vD, float vU, float y, ref Color colD, ref Color colU, bool isRight)
     {
-        int count = _fastV;
-        var verts = _fastVerts;
-        if (count + 4 > verts.Length)
-            return;
-
-        int u = _fastU;
-        var uv = _fastUV;
-        if (!isRight)
+        if (!hasCapacity(true))
         {
-            verts[count] = new Vector3(posLD.x, y, posLD.y);
-            verts[count + 1] = new Vector3(posRD.x, y, posRD.y);
-            verts[count + 2] = new Vector3(posLU.x, y, posLU.y);
-            verts[count + 3] = new Vector3(posRU.x, y, posRU.y);
-            uv[u] = new Vector2(0f, vD);
-            uv[u + 1] = new Vector2(1f, vD);
-            uv[u + 2] = new Vector2(0f, vU);
-            uv[u + 3] = new Vector2(1f, vU);
+            prepareListFallback();
+            return false;
+        }
+
+        var command = new NativeGeometryEmitter.Command();
+        command.Kind = NativeGeometryEmitter.QuadRange;
+        command.Flags = isRight ? 1 : 0;
+        command.P0 = posLD.x;
+        command.P1 = posLD.y;
+        command.P2 = posRD.x;
+        command.P3 = posRD.y;
+        command.P4 = posLU.x;
+        command.P5 = posLU.y;
+        command.P6 = posRU.x;
+        command.P7 = posRU.y;
+        command.P8 = vD;
+        command.P9 = vU;
+        command.P10 = y;
+        command.SetColors(ref colD, ref colU);
+        if (canQueueNative())
+            queueCommand(ref command, true);
+        else
+        {
+            replayQueuedManaged();
+            writeJointQuadRange(ref command, ref _fastV, ref _fastU, ref _fastT);
+        }
+        return true;
+    }
+
+    private void writeJointPrim(ref NativeGeometryEmitter.Command command,
+        ref int vertex, ref int uv, ref int triangle)
+    {
+        if (command.P2 < command.P5)
+        {
+            _fastVerts[vertex] = new Vector3(command.P0, command.P12, command.P2);
+            _fastVerts[vertex + 1] = new Vector3(command.P1, command.P12, command.P2);
+            _fastVerts[vertex + 2] = new Vector3(command.P3, command.P12, command.P5);
+            _fastVerts[vertex + 3] = new Vector3(command.P4, command.P12, command.P5);
+            _fastUV[uv] = new Vector2(command.P6, command.P10);
+            _fastUV[uv + 1] = new Vector2(command.P7, command.P10);
+            _fastUV[uv + 2] = new Vector2(command.P8, command.P11);
+            _fastUV[uv + 3] = new Vector2(command.P9, command.P11);
         }
         else
         {
-            verts[count] = new Vector3(posRD.x, y, posRD.y);
-            verts[count + 1] = new Vector3(posLD.x, y, posLD.y);
-            verts[count + 2] = new Vector3(posRU.x, y, posRU.y);
-            verts[count + 3] = new Vector3(posLU.x, y, posLU.y);
-            uv[u] = new Vector2(1f, vD);
-            uv[u + 1] = new Vector2(0f, vD);
-            uv[u + 2] = new Vector2(1f, vU);
-            uv[u + 3] = new Vector2(0f, vU);
+            _fastVerts[vertex] = new Vector3(command.P1, command.P12, command.P2);
+            _fastVerts[vertex + 1] = new Vector3(command.P0, command.P12, command.P2);
+            _fastVerts[vertex + 2] = new Vector3(command.P4, command.P12, command.P5);
+            _fastVerts[vertex + 3] = new Vector3(command.P3, command.P12, command.P5);
+            _fastUV[uv] = new Vector2(command.P7, command.P10);
+            _fastUV[uv + 1] = new Vector2(command.P6, command.P10);
+            _fastUV[uv + 2] = new Vector2(command.P9, command.P11);
+            _fastUV[uv + 3] = new Vector2(command.P8, command.P11);
         }
-        var cols = _fastCols;
-        cols[count] = colD;
-        cols[count + 1] = colD;
-        cols[count + 2] = colU;
-        cols[count + 3] = colU;
-        int t = _fastT;
-        var tris = _fastTris;
-        tris[t] = count;
-        tris[t + 1] = count + 1;
-        tris[t + 2] = count + 2;
-        tris[t + 3] = count + 2;
-        tris[t + 4] = count + 1;
-        tris[t + 5] = count + 3;
-        _fastV = count + 4;
-        _fastU = u + 4;
-        _fastT = t + 6;
+        writeColors(ref command, vertex);
+        writeTriangles(vertex, triangle);
+        vertex += 4;
+        uv += 4;
+        triangle += 6;
+    }
+
+    private void writeJointWall(ref NativeGeometryEmitter.Command command,
+        ref int vertex, ref int triangle)
+    {
+        if (command.P1 < command.P3)
+        {
+            _fastVerts[vertex] = new Vector3(command.P0, command.P4, command.P1);
+            _fastVerts[vertex + 1] = new Vector3(command.P2, command.P4, command.P3);
+            _fastVerts[vertex + 2] = new Vector3(command.P0, command.P5, command.P1);
+            _fastVerts[vertex + 3] = new Vector3(command.P2, command.P5, command.P3);
+        }
+        else
+        {
+            _fastVerts[vertex] = new Vector3(command.P2, command.P4, command.P3);
+            _fastVerts[vertex + 1] = new Vector3(command.P0, command.P4, command.P1);
+            _fastVerts[vertex + 2] = new Vector3(command.P2, command.P5, command.P3);
+            _fastVerts[vertex + 3] = new Vector3(command.P0, command.P5, command.P1);
+        }
+        writeColors(ref command, vertex);
+        writeTriangles(vertex, triangle);
+        vertex += 4;
+        triangle += 6;
+    }
+
+    private void writeJointQuadRange(ref NativeGeometryEmitter.Command command,
+        ref int vertex, ref int uv, ref int triangle)
+    {
+        if ((command.Flags & 1) == 0)
+        {
+            _fastVerts[vertex] = new Vector3(command.P0, command.P10, command.P1);
+            _fastVerts[vertex + 1] = new Vector3(command.P2, command.P10, command.P3);
+            _fastVerts[vertex + 2] = new Vector3(command.P4, command.P10, command.P5);
+            _fastVerts[vertex + 3] = new Vector3(command.P6, command.P10, command.P7);
+            _fastUV[uv] = new Vector2(0f, command.P8);
+            _fastUV[uv + 1] = new Vector2(1f, command.P8);
+            _fastUV[uv + 2] = new Vector2(0f, command.P9);
+            _fastUV[uv + 3] = new Vector2(1f, command.P9);
+        }
+        else
+        {
+            _fastVerts[vertex] = new Vector3(command.P2, command.P10, command.P3);
+            _fastVerts[vertex + 1] = new Vector3(command.P0, command.P10, command.P1);
+            _fastVerts[vertex + 2] = new Vector3(command.P6, command.P10, command.P7);
+            _fastVerts[vertex + 3] = new Vector3(command.P4, command.P10, command.P5);
+            _fastUV[uv] = new Vector2(1f, command.P8);
+            _fastUV[uv + 1] = new Vector2(0f, command.P8);
+            _fastUV[uv + 2] = new Vector2(1f, command.P9);
+            _fastUV[uv + 3] = new Vector2(0f, command.P9);
+        }
+        writeColors(ref command, vertex);
+        writeTriangles(vertex, triangle);
+        vertex += 4;
+        uv += 4;
+        triangle += 6;
+    }
+
+    private void writeColors(ref NativeGeometryEmitter.Command command, int vertex)
+    {
+        var color0 = new Color(command.Color0R, command.Color0G, command.Color0B, command.Color0A);
+        var color1 = new Color(command.Color1R, command.Color1G, command.Color1B, command.Color1A);
+        _fastCols[vertex] = color0;
+        _fastCols[vertex + 1] = color0;
+        _fastCols[vertex + 2] = color1;
+        _fastCols[vertex + 3] = color1;
+    }
+
+    private void writeTriangles(int vertex, int triangle)
+    {
+        _fastTris[triangle] = vertex;
+        _fastTris[triangle + 1] = vertex + 1;
+        _fastTris[triangle + 2] = vertex + 2;
+        _fastTris[triangle + 3] = vertex + 2;
+        _fastTris[triangle + 4] = vertex + 1;
+        _fastTris[triangle + 5] = vertex + 3;
     }
 
     [MonoModReplace]
@@ -212,13 +361,35 @@ public class patch_PrimitiveMesh : PrimitiveMesh
         if (!_isMeshValid)
             return;
 
+        if (_nativeCommandCount > 0)
+        {
+            int vertexCount;
+            int uvCount;
+            int triangleCount;
+            if (!NativeGeometryEmitter.TryEmit(
+                _nativeCommands,
+                _nativeCommandCount,
+                _fastVerts,
+                _fastCols,
+                _fastUV,
+                _fastTris,
+                _fastV,
+                _fastU,
+                _fastT,
+                out vertexCount,
+                out uvCount,
+                out triangleCount))
+                replayQueuedManaged();
+            else
+                _nativeCommandCount = 0;
+        }
+
         if (_fastV > 0)
         {
             if (_vertices.Count > 0)
             {
-                // List.Add path was also used this frame (never happens in
-                // gameplay: JointUtil is the only production emitter). The
-                // relative order is unknowable, so keep the List content.
+                // JointUtil is the only production emitter. Preserve the
+                // original List content if an unexpected mixed path occurs.
                 _fastV = 0;
                 _fastU = 0;
                 _fastT = 0;
@@ -229,9 +400,6 @@ public class patch_PrimitiveMesh : PrimitiveMesh
                 ListInternals<Color>.SetSize(_colors, _fastV);
                 ListInternals<Vector2>.SetSize(_uv, _fastU);
                 ListInternals<int>.SetSize(_triangles, _fastT);
-                _fastV = 0;
-                _fastU = 0;
-                _fastT = 0;
             }
         }
 
@@ -249,10 +417,14 @@ public class patch_PrimitiveMesh : PrimitiveMesh
             _mesh.SetTriangles(_triangles, 0);
         }
 
+        var rebind = _listFallback;
         _stripVertexCount = -1;
         _vertices.Clear();
         _colors.Clear();
         _uv.Clear();
         _triangles.Clear();
+        resetFastFrame();
+        if (rebind)
+            bindFast();
     }
 }

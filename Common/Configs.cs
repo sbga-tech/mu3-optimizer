@@ -44,6 +44,12 @@ namespace MonoMod
         [IniField("Optimization", "PrimitiveMeshEmission", 1)]
         public static bool PrimitiveMeshEmission;
 
+        [IniField("Optimization", "ScorePresentation", 1)]
+        public static bool ScorePresentation;
+
+        [IniField("Optimization", "JudgementPrewarm", 0)]
+        public static bool JudgementPrewarm;
+
         [IniField("Optimization", "UVAnimation", 1)]
         public static bool UVAnimation;
 
@@ -74,6 +80,8 @@ namespace MonoMod
             MonoModRule.Flag.Set(nameof(LaneGeometryCulling), LaneGeometryCulling);
             MonoModRule.Flag.Set(nameof(CachedNoteVisibility), CachedNoteVisibility);
             MonoModRule.Flag.Set(nameof(PrimitiveMeshEmission), PrimitiveMeshEmission);
+            MonoModRule.Flag.Set(nameof(ScorePresentation), ScorePresentation);
+            MonoModRule.Flag.Set(nameof(JudgementPrewarm), JudgementPrewarm);
             MonoModRule.Flag.Set(nameof(UVAnimation), UVAnimation);
             MonoModRule.Flag.Set(nameof(CollabSocketCaching), CollabSocketCaching);
             MonoModRule.Flag.Set(nameof(CollabHeartbeatCaching), CollabHeartbeatCaching);

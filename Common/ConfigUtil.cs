@@ -121,7 +121,6 @@ static partial class MonoModRules
         {
             var attribute = FindIniConfigAttribute(config);
             IniConfig(config, attribute);
-            MonoModRule.Modder.ExecuteRules(config);
             StripPatchTimeConstructor(config);
         }
 
