@@ -108,6 +108,9 @@ public class patch_AssetAssign : AssetAssign
         var wallHoldEndRight = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_holdend_pur.prefab");
         var holdEndBlack = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_blk.prefab");
         var holdEndWhite = AssetBundlesRegistry.LoadAsset<GameObject>("NoteOptimizationBundle", "Assets/GameObject/nt_end_wht.prefab");
+        _noteAssign.holdEndBlack = holdEndBlack;
+        _noteAssign.holdEndWhite = holdEndWhite;
+
         
         _noteAssign.sideHoldEndViolet = wallHoldEndLeft;
         _noteAssign.sideHoldEndPurple = wallHoldEndRight;
@@ -181,7 +184,7 @@ public class patch_AssetAssign : AssetAssign
         }
         catch (System.Exception exception)
         {
-            Debug.LogError("Failed to load note optimization asset bundle! " + exception);
+            Debug.LogError("[Steroid][NoteBatching] asset bundle load failed: " + exception);
         }
 
         orig_Awake();
@@ -202,9 +205,7 @@ public class patch_AssetAssign : AssetAssign
         {
             var name = i < names.Length ? names[i] : i.ToString();
             if (assigns[i] == null)
-                Debug.LogError($"[NoteOpt] note.assigns[{i}] ({name}) is NULL!");
-            else
-                Debug.Log($"[NoteOpt] note.assigns[{i}] ({name}) = {assigns[i].name}");
+                Debug.LogError($"[Steroid][NoteBatching] note.assigns[{i}] ({name}) is null.");
         }
     }
 }

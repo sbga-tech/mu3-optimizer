@@ -1,0 +1,13 @@
+.{
+    .name = .mu3player,
+    .fingerprint = 0x1fc589a0d02517b5,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .win32 = .{
+            .url = "https://github.com/marlersoft/zigwin32/archive/9f15c276b4e9d05afd34a10d8662a7dfc34647ea.tar.gz",
+            .hash = "win32-42.0.39-preview-mX5pFS564gPTezZn4v3TMxRnfJUrZNx1B_F2p2HKXOeG",
+        },
+    },
+    .paths = .{ "build.zig", "build.zig.zon", "src", "vendor" },
+}

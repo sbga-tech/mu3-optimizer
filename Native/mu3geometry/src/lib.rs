@@ -327,24 +327,36 @@ mod tests {
     }
 
     #[test]
-    fn invalid_batch_does_not_write() {
-        let command = command(99, 0, [0.0; 13], 0.0, 0.0);
-        let mut vertices = [Vec3 { x: 7.0, y: 8.0, z: 9.0 }; 4];
-        let mut colors = [color(1.0); 4];
-        let mut uvs = [Vec2 { x: 5.0, y: 6.0 }; 4];
-        let mut triangles = [17; 6];
+    fn invalid_later_command_leaves_the_entire_batch_unwritten() {
+        let commands = [
+            command(COMMAND_PRIM, 0, [0.0; 13], 0.0, 0.0),
+            command(99, 0, [0.0; 13], 0.0, 0.0),
+        ];
+        let mut vertices = [Vec3 { x: 7.0, y: 8.0, z: 9.0 }; 8];
+        let mut colors = [color(1.0); 8];
+        let mut uvs = [Vec2 { x: 5.0, y: 6.0 }; 8];
+        let mut triangles = [17; 12];
         let mut vc = -1;
         let mut uc = -1;
         let mut tc = -1;
         let status = unsafe {
             mu3_geometry_emit(
-                &command, 1, vertices.as_mut_ptr(), 4, colors.as_mut_ptr(), 4,
-                uvs.as_mut_ptr(), 4, triangles.as_mut_ptr(), 6, &mut vc, &mut uc, &mut tc,
+                commands.as_ptr(), 2, vertices.as_mut_ptr(), 8, colors.as_mut_ptr(), 8,
+                uvs.as_mut_ptr(), 8, triangles.as_mut_ptr(), 12, &mut vc, &mut uc, &mut tc,
             )
         };
         assert_eq!(status, STATUS_KIND);
-        assert_eq!(vertices[0].x, 7.0);
-        assert_eq!(triangles[0], 17);
+        assert_eq!((vc, uc, tc), (-1, -1, -1));
+        for vertex in vertices {
+            assert_eq!((vertex.x, vertex.y, vertex.z), (7.0, 8.0, 9.0));
+        }
+        for color in colors {
+            assert_eq!((color.r, color.g, color.b, color.a), (1.0, 2.0, 3.0, 4.0));
+        }
+        for uv in uvs {
+            assert_eq!((uv.x, uv.y), (5.0, 6.0));
+        }
+        assert_eq!(triangles, [17; 12]);
     }
 
     #[test]
@@ -364,7 +376,16 @@ mod tests {
             )
         };
         assert_eq!(status, STATUS_CAPACITY);
-        assert_eq!(vertices[0].x, 7.0);
-        assert_eq!(triangles[0], 17);
+        assert_eq!((vc, uc, tc), (-1, -1, -1));
+        for vertex in vertices {
+            assert_eq!((vertex.x, vertex.y, vertex.z), (7.0, 8.0, 9.0));
+        }
+        for color in colors {
+            assert_eq!((color.r, color.g, color.b, color.a), (1.0, 2.0, 3.0, 4.0));
+        }
+        for uv in uvs {
+            assert_eq!((uv.x, uv.y), (5.0, 6.0));
+        }
+        assert_eq!(triangles, [17; 6]);
     }
 }

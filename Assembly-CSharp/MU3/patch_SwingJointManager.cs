@@ -129,7 +129,7 @@ public class patch_SwingJointManager : SwingJointManager
     /// </summary>
     private static bool fpsGate()
     {
-        var fps = SwingJointPhysicsConfig.SwingJointFPS;
+        var fps = MonoMod.SwingJointPhysicsConfig.SwingJointFPS;
         if (fps <= 0f)
             return true;
 
@@ -162,7 +162,7 @@ public class patch_SwingJointManager : SwingJointManager
         for (var i = 0; i < _colliders.Length; i++)
             _colliders[i].updateCache(ref _colliderInformation[i]);
 
-        if (SwingJointPhysicsConfig.SwingJointNative && NativeSwingSolver.Available
+        if (MonoMod.SwingJointPhysicsConfig.SwingJointNative && NativeSwingSolver.Available
             && ensureDirect() && solveDirect())
             return;
 
@@ -195,7 +195,7 @@ public class patch_SwingJointManager : SwingJointManager
         if (init != 0)
         {
             _directState = -1;
-            Debug.Log("[SwingNative] Direct transform mode unavailable (init " + init + "); managed solver stays.");
+            Debug.LogWarning("[Steroid][SwingNative] direct transform mode unavailable (init " + init + "); using managed solver.");
             return false;
         }
         for (var i = 0; i < _joints.Count; i++)
@@ -206,11 +206,10 @@ public class patch_SwingJointManager : SwingJointManager
             if (status == 0)
             {
                 _directState = 1;
-                Debug.Log("[SwingNative] Direct transform mode enabled (transform verified).");
                 return true;
             }
             _directState = -1;
-            Debug.LogError("[SwingNative] Transform verification failed (" + status + "); managed solver stays.");
+            Debug.LogWarning("[Steroid][SwingNative] transform verification failed (" + status + "); using managed solver.");
             return false;
         }
         return false;
@@ -274,7 +273,7 @@ public class patch_SwingJointManager : SwingJointManager
             // Argument/status failures happen before any native write; the
             // managed fallback stays usable this frame.
             _directState = -1;
-            Debug.LogError("[SwingNative] Direct solver failed; managed solver stays. " + exception);
+            Debug.LogWarning("[Steroid][SwingNative] direct solver failed; using managed solver. " + exception);
             return false;
         }
     }

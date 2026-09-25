@@ -175,11 +175,11 @@ public class patch_MU3Text : MU3Text
                 ShaderAssetPath);
             _gpuShaderSupported = _gpuShader.isSupported;
             if (!_gpuShaderSupported)
-                Debug.LogError("[GpuTextScroll] The scrolling shader is unavailable; using CPU scrolling.");
+                Debug.LogWarning("[Steroid][GpuTextScroll] scrolling shader unavailable; using CPU scrolling.");
         }
         catch (Exception exception)
         {
-            Debug.LogError("[GpuTextScroll] Failed to initialize the scrolling shader; using CPU scrolling. " + exception);
+            Debug.LogWarning("[Steroid][GpuTextScroll] shader initialization failed; using CPU scrolling. " + exception);
         }
     }
 

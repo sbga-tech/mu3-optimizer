@@ -46,14 +46,14 @@ public class BatchDebug : MonoBehaviour
         GameEngine gameEngine = SingletonMonoBehaviour<GameEngine>.instance;
         if (gameEngine == null || gameEngine.notesManager == null)
         {
-            Debug.Log("[BatchDebug] NotesManager not available.");
+            Debug.Log("[Steroid][BatchDebug] NotesManager not available.");
             return;
         }
 
         NotesCacheList cacheList = gameEngine.notesManager.noteCacheList;
         if (cacheList == null || cacheList.Count == 0)
         {
-            Debug.Log("[BatchDebug] noteCacheList is empty or null.");
+            Debug.Log("[Steroid][BatchDebug] noteCacheList is empty or null.");
             return;
         }
 
@@ -406,12 +406,12 @@ public class BatchDebug : MonoBehaviour
         try
         {
             File.WriteAllText("batch_debug_report.txt", report);
-            Debug.Log("[BatchDebug] Report written to "
+            Debug.Log("[Steroid][BatchDebug] Report written to "
                 + System.IO.Path.GetFullPath("batch_debug_report.txt"));
         }
         catch (System.Exception ex)
         {
-            Debug.LogWarning("[BatchDebug] Failed to write report: " + ex.Message);
+            Debug.LogWarning("[Steroid][BatchDebug] report write failed: " + ex);
         }
     }
 

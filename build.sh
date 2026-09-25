@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ -f .env ]; then
+    set -o allexport
+    source .env
+    set +o allexport
+fi
+
 readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly UNITY_PROJECT="$ROOT/UnityAssets"
 readonly UNITY_IMAGE_CONTEXT="$ROOT/docker/unity-wine"
@@ -24,7 +30,7 @@ Usage: ./build.sh [all|build-assets|build-native|build-main|patch]
                 build the managed assemblies, and apply both MonoMod patches.
   build-assets  Rebuild every labelled AssetBundle with Unity 5.6.4f1 under
                 Wine and collect the flat bundle set into UnityAssets/Build.
-  build-native  Cross-compile every Cargo crate directly under Native/ and
+  build-native  Cross-compile the Zig player hook and remaining Cargo crates;
                 collect all produced Windows DLLs into Native/Build.
   build-main    Collect native DLLs, then build Steroid.sln in the pinned
                 .NET SDK container using UnityAssets/Build and Native/Build.
@@ -156,9 +162,10 @@ run_dotnet() {
         --env DOTNET_CLI_TELEMETRY_OPTOUT=1 \
         --env DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
         --env DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=true \
+        --env MU3_MODS_CONFIG_PATH=/workspace/mu3-optimizer/mu3.ini \
         --env DOTNET_NOLOGO=1 \
         --volume "$ROOT:/workspace/mu3-optimizer" \
-        --volume "$ROOT/../mu3-reference:/workspace/mu3-reference:ro" \
+        --volume "$ROOT/../mu3-reference:/workspace/mu3-reference" \
         --volume "$nuget_packages:/nuget" \
         --workdir /workspace/mu3-optimizer \
         --entrypoint /usr/share/dotnet/dotnet \
@@ -167,6 +174,7 @@ run_dotnet() {
 }
 
 build_native() {
+    require_command zig
     require_command cargo
     require_command x86_64-w64-mingw32-gcc
 
@@ -174,9 +182,37 @@ build_native() {
     mkdir -p "$NATIVE_BUILD"
 
     local manifest crate_dir target_output artifact artifact_name
+    local zig_project_count=0
     local manifest_count=0
     local artifact_count=0
     local crate_artifact_count
+    for manifest in "$NATIVE_ROOT"/*/build.zig; do
+        [[ -f "$manifest" ]] || continue
+        zig_project_count=$((zig_project_count + 1))
+        crate_dir="${manifest%/build.zig}"
+        target_output="$crate_dir/target/zig/bin"
+        rm -f "$target_output"/*.dll
+
+        (
+            cd "$crate_dir"
+            zig build -Doptimize=ReleaseFast --prefix target/zig
+        )
+
+        crate_artifact_count=0
+        for artifact in "$target_output"/*.dll; do
+            [[ -f "$artifact" ]] || continue
+            artifact_name="${artifact##*/}"
+            [[ ! -e "$NATIVE_BUILD/$artifact_name" ]] || \
+                fail "duplicate native module name: $artifact_name"
+            cp -f "$artifact" "$NATIVE_BUILD/$artifact_name"
+            crate_artifact_count=$((crate_artifact_count + 1))
+            artifact_count=$((artifact_count + 1))
+        done
+        [[ "$crate_artifact_count" -gt 0 ]] || \
+            fail "native Zig project produced no Windows DLL: $manifest"
+    done
+
+    [[ "$zig_project_count" -gt 0 ]] || fail "no native Zig projects found under Native/"
     for manifest in "$NATIVE_ROOT"/*/Cargo.toml; do
         [[ -f "$manifest" ]] || continue
         manifest_count=$((manifest_count + 1))
@@ -203,8 +239,7 @@ build_native() {
             fail "native crate produced no Windows DLL: $manifest"
     done
 
-    [[ "$manifest_count" -gt 0 ]] || fail "no Cargo crates found under Native/"
-    [[ "$artifact_count" -gt 0 ]] || fail "native build produced no Windows DLLs"
+    [[ "$manifest_count" -gt 0 ]] || fail "no native Cargo crates found under Native/"
     printf 'Collected %d native DLLs into Native/Build.\n' "$artifact_count"
 }
 

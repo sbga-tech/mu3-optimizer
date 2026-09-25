@@ -17,6 +17,12 @@ public class patch_BattleCamera : BattleCamera
 
     [MonoModIgnore] private RenderTexture _stageRenderTexutre;
     [MonoModIgnore] private RenderTexture _postStageRenderTexture;
+    [MonoModIgnore] private GameObject _effectCameraPrefab;
+    [MonoModIgnore] private Camera _postStageCamera;
+    [MonoModIgnore] private Rect _stageCameraRect;
+
+    private CameraClearFlags _originalMainClearFlags;
+    private Color _originalMainBackgroundColor;
 
     private StageCompositor _compositor;
 
@@ -26,24 +32,26 @@ public class patch_BattleCamera : BattleCamera
         if (_mainCamera == null)
             return;
 
-        // Stub billboard — stage content is drawn via CommandBuffer, not a quad
+        // Stage pixels are composited directly into the reference post-stage
+        // target. Keep the effect-camera asset for its animator and event
+        // handler; the compositor owns the actual layer render.
 
-        // _postStageBillboard = new GameObject("PostStageBillboardStub");
-        // _postStageBillboard.transform.SetParent(nextCamera.transform, false);
-
-        // Instantiate the EffectCamera prefab purely for its Animator + AnimationEventHandler.
-        // The Camera component is disabled (no rendering).
-        // if (_effectCameraPrefab != null)
-        // {
-        //     GameObject effectObj = Object.Instantiate(_effectCameraPrefab, parent, false);
-        //     _postStageCamera = effectObj.GetComponentInChildren<Camera>();
-        //     if (_postStageCamera != null)
-        //         _postStageCamera.enabled = false;
-        //     _postStageCameraAnimator = effectObj.GetComponentInChildren<Animator>();
-        //     if (_postStageCameraAnimator != null)
-        //         _postStageCameraAnimationEventHandler =
-        //             _postStageCameraAnimator.GetComponent<AnimationEventHandler>();
-        // }
+        if (_effectCameraPrefab != null)
+        {
+            var effectObj = UnityEngine.Object.Instantiate(_effectCameraPrefab, parent, false);
+            _postStageCamera = effectObj.GetComponentInChildren<Camera>();
+            if (_postStageCamera != null)
+            {
+                _postStageCamera.enabled = false;
+                _postStageCamera.targetTexture = null;
+            }
+            _postStageCameraAnimator = effectObj.GetComponentInChildren<Animator>();
+            if (_postStageCameraAnimator != null)
+            {
+                _postStageCameraAnimationEventHandler =
+                    _postStageCameraAnimator.GetComponent<AnimationEventHandler>();
+            }
+        }
 
         if (_postStageCameraAnimator == null)
         {
@@ -53,13 +61,16 @@ public class patch_BattleCamera : BattleCamera
             animatorStub.transform.SetParent(parent, false);
         }
 
-        // MainCamera keeps its original culling mask (excludes L27/L30).
-        // The StageCompositor helper camera renders L27 and L30 separately.
+        // Preserve the scene camera state for the transition path. The
+        // compositor temporarily needs depth-only output while active.
+        _originalMainClearFlags = _mainCamera.clearFlags;
+        _originalMainBackgroundColor = _mainCamera.backgroundColor;
         _mainCamera.clearFlags = CameraClearFlags.Depth;
         
         _compositor = _mainCamera.gameObject.AddComponent<StageCompositor>();
         
-        _compositor.Initialize(_mainCamera, _stageRenderTexutre, _postStageRenderTexture);
+        _compositor.Initialize(_mainCamera, _postStageCamera, _stageRenderTexutre,
+            _postStageRenderTexture, _originalMainClearFlags, _originalMainBackgroundColor);
         
     }
     
@@ -94,15 +105,19 @@ public class patch_BattleCamera : BattleCamera
 
     public new void setupStageCamera(GameObject stageObject, float renderTargetScale)
     {
+        var stageCamera = stageObject.GetComponentInChildren<Camera>();
+        if (stageCamera != null)
+            stageCamera.targetTexture = null;
+
         orig_setupStageCamera(stageObject, renderTargetScale);
 
         // Ensure _stageRenderTexutre is created (normally done by createStageMergeCamera)
         if (_stageRenderTexutre != null && !_stageRenderTexutre.IsCreated())
             _stageRenderTexutre.Create();
 
-        // Feed stage RT to the CommandBuffer compositor
+        // Feed the stage RT and the serialized scene viewport to the compositor.
         if (_compositor != null && _preStageRenderTexture != null)
-            _compositor.SetStageTexture(_preStageRenderTexture);
+            _compositor.SetStageTexture(_preStageRenderTexture, _stageCameraRect);
 
     }
 
@@ -131,7 +146,7 @@ public class patch_BattleCamera : BattleCamera
     private void Leave_StartCutscene()
     {
         orig_Leave_StartCutscene();
-        if (RenderLayersConfig.DisableShadows)
+        if (MonoMod.RenderLayersConfig.DisableShadows)
             DisableShadows();
     }
 

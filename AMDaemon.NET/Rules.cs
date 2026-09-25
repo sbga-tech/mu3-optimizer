@@ -17,7 +17,7 @@ static partial class MonoModRules
         InitializePatch();
         if (!MonoModRule.Flag.Get("InlinedAMDaemonCalls"))
             return;
-        var result = Rewrite(MonoModRule.Modder.Module);
+        var result = Rewrite(GetCurrentModder().Module);
         if (!result.StartsWith("rewrote ", StringComparison.Ordinal))
             throw new InvalidOperationException("InlinedAMDaemonCalls rewrite failed: " + result);
     }

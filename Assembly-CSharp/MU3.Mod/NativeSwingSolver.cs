@@ -86,7 +86,7 @@ internal static class NativeSwingSolver
             catch (Exception exception)
             {
                 _available = false;
-                Debug.Log("[SwingNative] embedded mu3swing image unavailable; using managed solver. "
+                Debug.LogWarning("[Steroid][SwingNative] embedded mu3swing image unavailable; using managed solver. "
                     + exception.Message);
             }
             return _available;
@@ -145,7 +145,7 @@ internal static class NativeSwingSolver
             catch (Exception exception)
             {
                 _readCachedPtr = null;
-                Debug.Log("[SwingNative] m_CachedPtr reader unavailable; managed solver stays. "
+                Debug.LogWarning("[Steroid][SwingNative] m_CachedPtr reader unavailable; using managed solver. "
                     + exception.Message);
             }
             return _readCachedPtr;
@@ -188,7 +188,7 @@ internal static class NativeSwingSolver
             catch (Exception exception)
             {
                 _readObjectPtr = null;
-                Debug.Log("[SwingNative] MonoObject reader unavailable; managed solver stays. "
+                Debug.LogWarning("[Steroid][SwingNative] MonoObject reader unavailable; using managed solver. "
                     + exception.Message);
             }
             return _readObjectPtr;

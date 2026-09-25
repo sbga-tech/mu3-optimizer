@@ -1,5 +1,6 @@
 using MonoMod;
 using MU3.DataStudio;
+using MU3.Util;
 
 namespace MU3.Battle;
 
@@ -19,10 +20,16 @@ public class patch_GameEngine : GameEngine
     private const float OverkillDuration = 4.98f + Margin;
     private const float WaveShiftDuration = 3.17f + Margin;
 
+    private PreparedTransitionEffects _preparedTransitionEffects;
+
     public extern void orig_startStartCutscene(bool disableSound);
 
     public new void startStartCutscene(bool disableSound = false)
     {
+        if (_preparedTransitionEffects == null)
+            _preparedTransitionEffects = gameObject.AddComponent<PreparedTransitionEffects>();
+        _preparedTransitionEffects.Prepare(SingletonMonoBehaviour<AssetAssign>.instance.stageEffect,
+            notesManager.waveDetailDataList.Count);
         StageCompositor.RequestFXLayer(BattleStartDuration);
         orig_startStartCutscene(disableSound);
     }
@@ -56,7 +63,17 @@ public class patch_GameEngine : GameEngine
     public new void startOverkillEffect()
     {
         StageCompositor.RequestFXLayer(OverkillDuration);
-        orig_startOverkillEffect();
+        var prefab = SingletonMonoBehaviour<AssetAssign>.instance.stageEffect.overkill;
+        var prepared = _preparedTransitionEffects != null
+            ? _preparedTransitionEffects.TakeOverkill(prefab) : null;
+        if (prepared == null)
+        {
+            orig_startOverkillEffect();
+            return;
+        }
+
+        battleCamera.startOverDamage();
+        PreparedTransitionEffects.Activate(prepared);
     }
 
     public extern void orig_startWaveShiftEffect(AttributeType attrBef, AttributeType attrAft);
@@ -64,6 +81,19 @@ public class patch_GameEngine : GameEngine
     public new void startWaveShiftEffect(AttributeType attrBef, AttributeType attrAft)
     {
         StageCompositor.RequestFXLayer(WaveShiftDuration);
-        orig_startWaveShiftEffect(attrBef, attrAft);
+        var prefab = SingletonMonoBehaviour<AssetAssign>.instance.stageEffect.waveShift;
+        var prepared = _preparedTransitionEffects != null
+            ? _preparedTransitionEffects.TakeWave(prefab) : null;
+        if (prepared == null)
+        {
+            orig_startWaveShiftEffect(attrBef, attrAft);
+            return;
+        }
+
+        PreparedTransitionEffects.Activate(prepared);
+        var wave = prepared.GetComponent<Evt_WaveShift>();
+        if (wave != null)
+            wave.setParam(notesManager.notesColor.attr[(int)attrBef].c,
+                notesManager.notesColor.attr[(int)attrAft].c);
     }
 }

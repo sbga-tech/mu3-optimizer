@@ -135,6 +135,22 @@ public class patch_NotesManagerRendering : NotesManager
                 return false;
         }
     }
+    // Alpha-tested note bodies keep writing depth. A small per-queue bias
+    // preserves the native hold-end -> flick -> tap order for coplanar quads
+    // without changing material sharing inside any existing batch.
+    private static float getCoplanarDepthOffset(int renderQueue)
+    {
+        switch (renderQueue)
+        {
+            case 2590:
+                return -1f;
+            case 2600:
+                return -2f;
+            default:
+                return 0f;
+        }
+    }
+
 
     [MonoModReplace]
     public new NotesCacheItem createNoteModel(NoteModel noteModel)
@@ -184,6 +200,8 @@ public class patch_NotesManagerRendering : NotesManager
                     {
                         renderQueue = rqBase + matCache.Count
                     };
+                    if (instanced.HasProperty("_DepthOffset"))
+                        instanced.SetFloat("_DepthOffset", getCoplanarDepthOffset(rqBase));
                     matCache[matMeshKey] = instanced;
                 }
 

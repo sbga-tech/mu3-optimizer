@@ -723,10 +723,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn identity_from_to() {
+    fn unchanged_direction_preserves_the_joint_orientation() {
         let v = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
         let q = q_from_to_rotation(v, v);
-        assert!((q.w - 1.0).abs() < 1e-6);
+        let probe = Vec3 { x: 1.0, y: 2.0, z: 3.0 };
+        let rotated = q_mul_vec(q, probe);
+        assert!((rotated.x - probe.x).abs() < 1e-6);
+        assert!((rotated.y - probe.y).abs() < 1e-6);
+        assert!((rotated.z - probe.z).abs() < 1e-6);
     }
 
     #[test]
@@ -745,5 +749,7 @@ mod tests {
         let c = ColliderInfo { position: Vec3 { x: 0.0, y: 0.0, z: 0.0 }, radius: 1.0 };
         let hit = collide_sphere(&c, Vec3 { x: 0.5, y: 0.0, z: 0.0 }, 0.1).unwrap();
         assert!((hit.x - 1.1).abs() < 1e-6);
+        assert!(hit.y.abs() < 1e-6);
+        assert!(hit.z.abs() < 1e-6);
     }
 }

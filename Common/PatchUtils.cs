@@ -14,13 +14,14 @@ static partial class MonoModRules
                           throw new InvalidOperationException("MonoMod.PatchConfig not found in " + module.Name);
 
         InitializeConfig(module);
-        ApplyPatchFlags(patchConfig);
-        module.Types.Remove(patchConfig);
+        MonoModRule.Flag.Set("AnyPatchEnabled", ApplyPatchFlags(patchConfig));
+        // Generated constant fields remain in the patched assembly for runtime readers.
         PropagateNestedConditions(module);
     }
 
-    private static void ApplyPatchFlags(TypeDefinition patchConfig)
+    private static bool ApplyPatchFlags(TypeDefinition patchConfig)
     {
+        var anyEnabled = false;
         MethodDefinition constructor = null;
         foreach (var method in patchConfig.Methods)
         {
@@ -53,9 +54,14 @@ static partial class MonoModRules
 
             if (valueLoad == null)
                 throw new InvalidOperationException("Patch flag value not generated for " + field.Name);
-            MonoModRule.Flag.Set(field.Name, ReadBooleanConstant(valueLoad));
+
+            var enabled = ReadBooleanConstant(valueLoad);
+            anyEnabled |= enabled;
+            MonoModRule.Flag.Set(field.Name, enabled);
         }
+        return anyEnabled;
     }
+
 
     private static bool ReadBooleanConstant(Instruction instruction)
     {
@@ -74,12 +80,19 @@ static partial class MonoModRules
         }
     }
 
+    internal static MonoModder GetCurrentModder()
+    {
+        var assemblyName = typeof(MonoModRules).Assembly.GetName().Name;
+        var modder = MonoModRulesManager.GetModder(assemblyName);
+        return modder ?? throw new InvalidOperationException("Current MonoModder not found for " + assemblyName);
+    }
+
     private static ModuleDefinition GetCurrentRulesModule()
     {
         // MonoMod parses Mods in order and removes each module's MonoModRules
         // immediately after executing it. During this static constructor, the
         // first module whose rules type remains is the module being parsed.
-        foreach (ModuleDefinition module in MonoModRule.Modder.Mods)
+        foreach (ModuleDefinition module in GetCurrentModder().Mods)
         {
             if (module.GetType("MonoMod.MonoModRules") != null)
                 return module;

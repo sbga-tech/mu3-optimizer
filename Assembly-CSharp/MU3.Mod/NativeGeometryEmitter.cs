@@ -110,7 +110,6 @@ internal static class NativeGeometryEmitter
                         "mu3geometry command ABI mismatch: native=" + nativeCommandSize
                         + ", managed=" + ExpectedCommandSize + ".");
                 _available = true;
-                Debug.Log("[GeometryNative] embedded batch emitter enabled.");
             }
             catch (Exception exception)
             {
@@ -193,6 +192,6 @@ internal static class NativeGeometryEmitter
         if (_failureLogged)
             return;
         _failureLogged = true;
-        Debug.Log("[GeometryNative] " + reason);
+        Debug.LogWarning("[Steroid][GeometryNative] " + reason);
     }
 }

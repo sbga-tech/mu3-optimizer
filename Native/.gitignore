@@ -1,2 +1,4 @@
 */target
 Build
+*/.zig-cache
+*/zig-pkg

@@ -12,6 +12,8 @@
         <NoWarn>IDE0044,IDE0051,IDE0052,IDE1006,CS0414,CS0649,CS0626</NoWarn>
     </PropertyGroup>
     <PropertyGroup>
+        <Mu3ReferenceDir>$(MSBuildThisFileDirectory)..\..\mu3-reference</Mu3ReferenceDir>
+        <Mu3ReferenceLibDir>$(Mu3ReferenceDir)\lib</Mu3ReferenceLibDir>
         <AssetBundlesDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../UnityAssets/Build'))</AssetBundlesDir>
         <NativeLibrariesDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../Native/Build'))</NativeLibrariesDir>
     </PropertyGroup>
@@ -33,16 +35,13 @@
         <ErrorReport>prompt</ErrorReport>
         <WarningLevel>4</WarningLevel>
     </PropertyGroup>
-    <PropertyGroup>
-        <DefineConstants>$(DefineConstants);MU3_ASSEMBLY_CSHARP</DefineConstants>
-    </PropertyGroup>
     <ItemGroup>
-        <Reference Include="mscorlib"><HintPath>..\..\mu3-reference\mscorlib.dll</HintPath></Reference>
-        <Reference Include="UnityEngine"><HintPath>..\..\mu3-reference\UnityEngine.dll</HintPath></Reference>
-        <Reference Include="UnityEngine.UI"><HintPath>..\..\mu3-reference\UnityEngine.UI.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp-firstpass"><HintPath>..\..\mu3-reference\Assembly-CSharp-firstpass.dll</HintPath></Reference>
-        <Reference Include="AMDaemon.NET"><HintPath>..\..\mu3-reference\AMDaemon.NET.dll</HintPath></Reference>
-        <Reference Include="Assembly-CSharp"><HintPath>..\..\mu3-reference\Assembly-CSharp.dll</HintPath></Reference>
+        <Reference Include="mscorlib"><HintPath>$(Mu3ReferenceLibDir)\mscorlib.dll</HintPath></Reference>
+        <Reference Include="UnityEngine"><HintPath>$(Mu3ReferenceLibDir)\UnityEngine.dll</HintPath></Reference>
+        <Reference Include="UnityEngine.UI"><HintPath>$(Mu3ReferenceLibDir)\UnityEngine.UI.dll</HintPath></Reference>
+        <ProjectReference Include="$(Mu3ReferenceDir)\Assembly-CSharp-firstpass\Assembly-CSharp-firstpass.csproj" />
+        <ProjectReference Include="$(Mu3ReferenceDir)\AMDaemon.NET\AMDaemon.NET.csproj" />
+        <ProjectReference Include="$(Mu3ReferenceDir)\Assembly-CSharp\Assembly-CSharp.csproj" />
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
         <PackageReference Include="monomod" Version="20.5.21.5" />
         <Compile Include="..\Common\**\*.cs" Link="Common\%(RecursiveDir)%(Filename)%(Extension)" />

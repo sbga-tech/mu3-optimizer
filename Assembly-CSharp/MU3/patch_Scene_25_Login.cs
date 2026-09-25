@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 using MonoMod;
 using MonoMod.Utils;
 using MU3.Client;
@@ -90,7 +89,6 @@ public class patch_Scene_25_Login : Scene_25_Login
 
     private List<Packet> packets_ = new List<Packet>();
     
-    private float accumulatedTime_;
 
     private class StateExecution
     {
@@ -171,7 +169,7 @@ public class patch_Scene_25_Login : Scene_25_Login
 
     private void StopAllParallelOperations()
     {
-        Debug.LogError("[QuickLogin] Error detected - stopping all parallel operations");
+        Debug.LogError("[Steroid][QuickLogin] parallel operations stopped after an error.");
         _loginError = true;
         _isLoggingIn = false;
 
@@ -203,13 +201,6 @@ public class patch_Scene_25_Login : Scene_25_Login
         }
     }
 
-    // private extern void orig_invokeOnFinish(int status);
-    //
-    // private void invokeOnFinish(int status)
-    // {
-    //     Debug.Log("[QuickLogin] invokeOnFinish called with status: " + status);
-    //     orig_invokeOnFinish(status);
-    // }
     
     List<bool> rivalMusicFetched_;
     Dictionary<long, Dictionary<int, MU3.User.UserRivalMusic>> rivalMusicCache_;
@@ -373,9 +364,7 @@ public class patch_Scene_25_Login : Scene_25_Login
 
     private IEnumerator ParallelLoadAllUserData()
     {
-        var stopwatch = Stopwatch.startNew();
         
-        Debug.Log("[QuickLogin] Starting quick login");
 
         var tasks = new List<Coroutine>();
 
@@ -450,7 +439,6 @@ public class patch_Scene_25_Login : Scene_25_Login
             State.GetUserKop
         })));
 
-        // var progressPrinter = StartCoroutine(printProgress());
 
         foreach (var task in tasks)
         {
@@ -458,37 +446,12 @@ public class patch_Scene_25_Login : Scene_25_Login
             if (_loginError) { HandleError(); yield break; }
         }
 
-        // StopCoroutine(progressPrinter);
-        
-        stopwatch.Stop();
-        
-        var endTimeMillis = stopwatch.ElapsedMilliseconds;
-        var origTimeMillis = accumulatedTime_;
-        
-        var endTime = endTimeMillis / 1000 + "s";
-        var origTime = origTimeMillis / 1000 + "s";
-        
-        var percentageSaved = ((origTimeMillis - endTimeMillis) / origTimeMillis) * 100f;
 
-        Debug.Log("[QuickLogin] Quick login completed successfully. Time taken: " + origTime + "->" + endTime + " (" + percentageSaved.ToString("F2") + "% faster)");
         _isLoggingIn = false;
 
         mode_.set(State.ExchangeGP);
     }
 
-    private IEnumerator printProgress()
-    {
-        while (_isLoggingIn && !_loginError)
-        {
-            var stringBuilder = new StringBuilder();
-            foreach (var state in _activeStates.Keys)
-            {
-                stringBuilder.Append(state.ToString() + ", ");
-            }
-            Debug.Log("[QuickLogin] Active states: " + stringBuilder.ToString().TrimEnd(',', ' ') + " (" + _activeStates.Count + " states)");
-            yield return new WaitForSeconds(1f);
-        }
-    }
     private IEnumerator ExecuteSequential(State[] states)
     {
         foreach (var state in states)
@@ -519,59 +482,13 @@ public class patch_Scene_25_Login : Scene_25_Login
         tasksLeft.Remove(state);
     }
 
-    private class Stopwatch
-    {
-        private long _accumulatedTicks = 0L;
-        private long _startTicks;
-        private bool _isRunning = false;
-
-        public static Stopwatch startNew() {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            return stopwatch;
-        }
-
-        public void Start()
-        {
-            if (!_isRunning)
-            {
-                _startTicks = DateTime.Now.Ticks;
-                _isRunning = true;
-            }
-        }
-
-        public void Stop()
-        {
-            if (_isRunning)
-            {
-                var elapsed = DateTime.Now.Ticks - _startTicks;
-                _accumulatedTicks += elapsed;
-                _isRunning = false;
-            }
-        }
-
-        public float ElapsedMilliseconds
-        {
-            get
-            {
-                var currentElapsed = _accumulatedTicks;
-                if (_isRunning)
-                {
-                    currentElapsed += DateTime.Now.Ticks - _startTicks;
-                }
-                return (float)(currentElapsed / TimeSpan.TicksPerMillisecond);
-            }
-        }
-    }
 
     private IEnumerator ExecuteState(State state)
     {
-        var stopwatch = Stopwatch.startNew();
 
         var execution = new StateExecution { state = state };
         _activeStates[state] = execution;
 
-        //Debug.Log($"[QuickLogin] ExecuteState({state}) started");
 
         // Save current packet to prevent corruption
         var originalPacket = packet_;
@@ -593,15 +510,13 @@ public class patch_Scene_25_Login : Scene_25_Login
             }
             catch (Exception e)
             {
-                Debug.LogError($"[QuickLogin] Error in {state}_Init: {e.Message}");
+                Debug.LogError($"[Steroid][QuickLogin] {state}_Init failed: {e}");
                 execution.error = true;
                 _loginError = true;
                 // Restore packet
                 packet_ = originalPacket;
                 packets_ = originalPacketsList;
 
-                stopwatch.Stop();
-                accumulatedTime_ += stopwatch.ElapsedMilliseconds;
                 yield break;
             }
         }
@@ -614,7 +529,7 @@ public class patch_Scene_25_Login : Scene_25_Login
 
             if (modeAfterInit == (int)State.Error)
             {
-                Debug.LogError($"[QuickLogin] Error in {state}_Init");
+                Debug.LogError($"[Steroid][QuickLogin] {state}_Init entered error state.");
                 execution.error = true;
                 _loginError = true;
             }
@@ -623,8 +538,6 @@ public class patch_Scene_25_Login : Scene_25_Login
             packets_ = originalPacketsList;
             _activeStates.Remove(state);
 
-            stopwatch.Stop();
-            accumulatedTime_ += stopwatch.ElapsedMilliseconds;
             yield break;
         }
 
@@ -633,13 +546,11 @@ public class patch_Scene_25_Login : Scene_25_Login
 
         if (myPacket == null && (myPacketsList == null || myPacketsList.Count == 0))
         {
-            Debug.LogError($"[QuickLogin] No packet created for {state}");
+            Debug.LogError($"[Steroid][QuickLogin] {state} produced no packet.");
             execution.error = true;
             _loginError = true;
             packet_ = originalPacket;
 
-            stopwatch.Stop();
-            accumulatedTime_ += stopwatch.ElapsedMilliseconds;
             yield break;
         }
 
@@ -650,12 +561,10 @@ public class patch_Scene_25_Login : Scene_25_Login
 
         if (procMethod == null)
         {
-            Debug.LogError($"[QuickLogin] No Proc method for {state}");
+            Debug.LogError($"[Steroid][QuickLogin] {state} has no Proc method.");
             execution.error = true;
             _loginError = true;
 
-            stopwatch.Stop();
-            accumulatedTime_ += stopwatch.ElapsedMilliseconds;
             yield break;
         }
 
@@ -676,7 +585,7 @@ public class patch_Scene_25_Login : Scene_25_Login
 
                     if (currentMode == (int)State.Error)
                     {
-                        Debug.LogError($"[QuickLogin] Error in {state}_Proc");
+                        Debug.LogError($"[Steroid][QuickLogin] {state}_Proc entered error state.");
                         execution.error = true;
                         _loginError = true;
                     }
@@ -684,7 +593,7 @@ public class patch_Scene_25_Login : Scene_25_Login
             }
             catch (Exception e)
             {
-                Debug.LogError($"[QuickLogin] Error in {state}_Proc: {e.Message}");
+                Debug.LogError($"[Steroid][QuickLogin] {state}_Proc failed: {e}");
                 execution.error = true;
                 _loginError = true;
             }
@@ -704,15 +613,11 @@ public class patch_Scene_25_Login : Scene_25_Login
         packets_ = originalPacketsList;
         _activeStates.Remove(state);
 
-        stopwatch.Stop();
-        var elapsed = stopwatch.ElapsedMilliseconds;
-        accumulatedTime_ += elapsed;
-        //Debug.Log($"[QuickLogin] ExecuteState({state}) completed in {elapsed}ms, total accumulated: {accumulatedTime_}ms");
     }
 
     private void HandleError()
     {
-        Debug.LogError("[QuickLogin] Quick login failed");
+        Debug.LogError("[Steroid][QuickLogin] login failed.");
         _isLoggingIn = false;
         mode_.set(State.Error);
     }

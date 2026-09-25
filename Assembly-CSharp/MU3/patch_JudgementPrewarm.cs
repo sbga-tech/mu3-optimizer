@@ -37,14 +37,13 @@ namespace MU3
             }
             catch (Exception exception)
             {
-                UnityEngine.Debug.LogError("[JudgementPrewarm] failed to start: " + exception);
+                UnityEngine.Debug.LogError("[Steroid][JudgementPrewarm] startup failed: " + exception);
                 JudgementPrewarmCoordinator.Complete();
             }
         }
 
         private IEnumerator runJudgementPrewarm()
         {
-            var startTime = UnityEngine.Time.realtimeSinceStartup;
             var randomState = UnityEngine.Random.state;
             var session = new Session();
             Exception failure = null;
@@ -52,7 +51,6 @@ namespace MU3
             try
             {
                 session.Setup(this, _judgeInfo);
-                UnityEngine.Debug.Log("[JudgementPrewarm] started ui=1 effects=normalCBreak");
             }
             catch (Exception exception)
             {
@@ -117,18 +115,15 @@ namespace MU3
 
             if (failure != null)
             {
-                UnityEngine.Debug.LogError("[JudgementPrewarm] failed: " + failure);
+                UnityEngine.Debug.LogError("[Steroid][JudgementPrewarm] execution failed: " + failure);
                 yield break;
             }
             if (!restored)
             {
-                UnityEngine.Debug.LogError("[JudgementPrewarm] invariant restore failed");
+                UnityEngine.Debug.LogError("[Steroid][JudgementPrewarm] state restoration failed.");
                 yield break;
             }
 
-            var elapsedMs = (UnityEngine.Time.realtimeSinceStartup - startTime) * 1000f;
-            UnityEngine.Debug.Log("[JudgementPrewarm] complete restored=true elapsedMs="
-                + elapsedMs.ToString("F3"));
         }
 
         private sealed class Session
@@ -489,7 +484,6 @@ namespace MU3.Game
         {
             if (JudgementPrewarmCoordinator.TryDeferMusic(this, musicData, selectorID))
             {
-                UnityEngine.Debug.Log("[JudgementPrewarm] deferred gameplay audio");
                 return;
             }
             orig_playMusic(musicData, selectorID);

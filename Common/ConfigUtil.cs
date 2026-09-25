@@ -36,8 +36,6 @@ class IniFieldAttribute : Attribute
 
 static partial class MonoModRules
 {
-    private const string OriginalConfigConstructorName = "__IniConfigOriginalCctor";
-
     internal static string IniPath => Environment.GetEnvironmentVariable("MU3_MODS_CONFIG_PATH") ?? "mu3.ini";
 
     public static void IniConfig(TypeDefinition type, CustomAttribute attribute)
@@ -45,13 +43,8 @@ static partial class MonoModRules
         if (type == null)
             throw new ArgumentNullException(nameof(type));
 
-        var original = type.Methods.SingleOrDefault(method => method.IsConstructor && method.IsStatic);
-        if (original == null)
-            throw new InvalidOperationException(type.FullName + " must declare a static constructor");
-
-        original.Name = OriginalConfigConstructorName;
-        original.IsSpecialName = false;
-        original.IsRuntimeSpecialName = false;
+        if (type.Methods.Any(method => method.IsConstructor && method.IsStatic))
+            throw new InvalidOperationException(type.FullName + " must not declare a static constructor");
 
         var generated = new MethodDefinition(
             ".cctor",
@@ -102,7 +95,6 @@ static partial class MonoModRules
             field.CustomAttributes.Remove(iniAttribute);
         }
 
-        il.Emit(OpCodes.Call, original);
         il.Emit(OpCodes.Ret);
         type.CustomAttributes.Remove(attribute);
     }
@@ -121,7 +113,6 @@ static partial class MonoModRules
         {
             var attribute = FindIniConfigAttribute(config);
             IniConfig(config, attribute);
-            StripPatchTimeConstructor(config);
         }
 
         foreach (var type in module.Types.Where(type =>
@@ -144,20 +135,6 @@ static partial class MonoModRules
         foreach (var nested in type.NestedTypes)
         foreach (var descendant in SelfAndNestedTypes(nested))
             yield return descendant;
-    }
-
-    private static void StripPatchTimeConstructor(TypeDefinition config)
-    {
-        var generated = config.Methods.Single(method => method.IsConstructor && method.IsStatic);
-        var original = config.Methods.Single(method => method.Name == OriginalConfigConstructorName);
-        var originalCall = generated.Body.Instructions.Single(instruction =>
-            instruction.OpCode == OpCodes.Call &&
-            instruction.Operand is MethodReference method &&
-            method.Resolve() == original);
-
-        // Preserve only the generated, constant field assignments in the target.
-        generated.Body.Instructions.Remove(originalCall);
-        config.Methods.Remove(original);
     }
 
     // ReSharper disable all

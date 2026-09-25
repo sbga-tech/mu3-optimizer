@@ -7,6 +7,8 @@ Shader "MU3Mod/2DNotes"
         _Cutoff  ("Alpha Cutoff", Range(0,1)) = 0.5
         [Toggle]
         _Mirror ("Mirror X", Float) = 0
+        [HideInInspector]
+        _DepthOffset ("Depth Offset", Float) = 0
     }
 
     SubShader
@@ -17,6 +19,7 @@ Shader "MU3Mod/2DNotes"
 
         Cull Off
         ZWrite On
+        Offset 0, [_DepthOffset]
         Lighting Off
 
         Pass
