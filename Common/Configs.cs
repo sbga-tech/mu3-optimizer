@@ -3,7 +3,7 @@ namespace MonoMod
     [IniConfig]
     public static class PatchConfig
     {
-        [IniField("Optimization", "NoImageBloom", 1)]
+        [IniField("Optimization", "NoImageBloom", 0)]
         public static bool NoImageBloom;
 
         [IniField("Optimization", "RenderLayers", 1)]
@@ -33,7 +33,7 @@ namespace MonoMod
         [IniField("Optimization", "PrimitiveMeshEmission", 0)]
         public static bool PrimitiveMeshEmission;
 
-        [IniField("Optimization", "GameplayPrewarm", 0)]
+        [IniField("Optimization", "GameplayPrewarm", 1)]
         public static bool GameplayPrewarm;
 
         [IniField("Optimization", "UVAnimation", 1)]
@@ -58,13 +58,13 @@ namespace MonoMod
     [IniConfig]
     public static class RenderLayersConfig
     {
-        [IniField("Optimization.RenderLayers", "StageFPS")]
+        [IniField("Optimization.RenderLayers", "StageFPS", 60)]
         public static float StageFPS;
 
-        [IniField("Optimization.RenderLayers", "BGMergeFPS")]
+        [IniField("Optimization.RenderLayers", "BGMergeFPS", 60)]
         public static float BGMergeFPS;
 
-        [IniField("Optimization.RenderLayers", "FXFPS", 30)]
+        [IniField("Optimization.RenderLayers", "FXFPS", 60)]
         public static float FXFPS;
 
         [IniField("Optimization.RenderLayers", "DisableShadows", 1)]
