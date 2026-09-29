@@ -2,10 +2,11 @@ using System;
 using MonoMod;
 using UnityEngine;
 
-namespace MU3;
+namespace MU3.Mod.NoUICameraDuringPlay;
 
-[MonoModIfFlag("NoUICameraDuringPlay")]
-public class patch_BattleUI : BattleUI
+[MonoModIfFlag(nameof(PatchConfig.NoUICameraDuringPlay))]
+[MonoModPatch("global::MU3.BattleUI")]
+public class BattleUIPatch : BattleUI
 {
     private Canvas[] _cachedCanvases;
     
@@ -29,7 +30,7 @@ public class patch_BattleUI : BattleUI
             else
                 Deoptimize();
         };
-        patch_SystemUI.OnUIOptimizeToggle += _onUIOptimizeToggle;
+        SystemUIPatch.OnUIOptimizeToggle += _onUIOptimizeToggle;
     }
 
     // OnUIOptimizeToggle is static: without this unsubscribe every destroyed
@@ -37,7 +38,7 @@ public class patch_BattleUI : BattleUI
     // plays. BattleUI has no original OnDestroy.
     private void OnDestroy()
     {
-        patch_SystemUI.OnUIOptimizeToggle -= _onUIOptimizeToggle;
+        SystemUIPatch.OnUIOptimizeToggle -= _onUIOptimizeToggle;
     }
 
 

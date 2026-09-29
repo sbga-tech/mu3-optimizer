@@ -5,10 +5,11 @@ using MU3.Sequence;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace MU3;
+namespace MU3.Mod.NoUICameraDuringPlay;
 
-[MonoModIfFlag("NoUICameraDuringPlay")]
-public class patch_SystemUI : SystemUI
+[MonoModIfFlag(nameof(PatchConfig.NoUICameraDuringPlay))]
+[MonoModPatch("global::MU3.SystemUI")]
+public class SystemUIPatch : SystemUI
 {
     [MonoModIgnore]
     private List<Canvas> _canvasList;
@@ -81,7 +82,7 @@ public class patch_SystemUI : SystemUI
 
     public new void execute()
     {
-        if (patch_PlayMusic.IsPlayingMusic && !IsRequiredUIExist())
+        if (PlayMusicHooks.IsPlayingMusic && !IsRequiredUIExist())
             Optimize();
         else
             Deoptimize();
