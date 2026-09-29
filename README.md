@@ -230,36 +230,7 @@ bin/Release/net35/MONOMODDED_Assembly-CSharp.dll
 bin/Release/net35/MONOMODDED_AMDaemon.NET.dll
 ```
 
-Install only the two `.mm.dll` files. The `MONOMODDED_*` assemblies are for checking how the patches combine, not for deployment; check them against the original game assemblies in the private benchmark workspace.
-
-### Native player library
-
-`Native/mu3player` builds the embedded `mu3player.dll` used by `UnityPlayerHooks`. `build.zig.zon` pins the `zigwin32` dependency by commit and content hash, so the first build needs network access to fetch it. The downloaded `zig-pkg/` sources are generated and not checked in. To build the library on its own:
-
-```sh
-cd Native/mu3player
-zig build -Doptimize=ReleaseFast --prefix target/zig
-```
-
-The warnings from these hooks include a 32-bit status code. `0` means success. The upper 16 bits say where the error came from (`0` for the player library itself, `1` for the GPU wait, `2` for the job signal hook) and the lower 16 bits give the reason. For example, `0x00010004` means the GPU wait couldn't find its target. If you change these codes, rebuild the managed mod and `mu3player.dll` together.
-
-The job signal tests live in `src/job_signal/semaphore.zig`. From `Native/mu3player`, run the host tests with:
-
-```sh
-zig test src/job_signal/semaphore.zig -lc
-```
-
-To cover real Windows semaphore behavior, cross-compile the tests and run the binary only through the `mu3perf` runner:
-
-```sh
-zig test src/job_signal/semaphore.zig -target x86_64-windows-gnu -lc -lkernel32 --test-no-exec -femit-bin=target/semaphore-tests.exe
-```
-
-Add permanent tests to `Native/mu3player` only for a real issue you have reproduced. Use throwaway checks for routine refactors.
-
-### Profiling
-
-For profiling at normal rendering load, set `StageFPS=-1`, `BGMergeFPS=-1`, and `FXFPS=-1`, because the default rates cap the layers at 60 redraws a second. Turn off TestPlay's diagnostic stub trace with `[TestPlay] StubTrace=0`, and don't count stub tracing as game or AMDaemon overhead. Measurements and test notes for each patch are in `OPTIMIZATION_ATTEMPTS.md`.
+Install only the two `.mm.dll` files if you are using BepInEx MonoMod loader. The `MONOMODDED_*` assemblies can be used on cab environment where MonoMod loader isn't applicable.
 
 ### Source layout
 
@@ -269,4 +240,3 @@ For profiling at normal rendering load, set `StageFPS=-1`, `BGMergeFPS=-1`, and 
 - `Assembly-CSharp/Runtime/`: embedded native-module and AssetBundle loading, and the frame-rate limiter, shared by several switches.
 - `*/MonoMod/Rules.cs`: the MonoMod rules entry points. `Common/` holds the configuration and patch lifecycle code shared by both projects.
 
-Each game method or field that a patch rewrites or adds belongs to exactly one patch type. Patching fails if two patch types write the same member, whichever switches are enabled.

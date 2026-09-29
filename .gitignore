@@ -2,7 +2,8 @@
 .env
 bin
 obj
-tools
+tools/*
+!tools/MonoModApply/
 *.DotSettings.user
 captures
 /old

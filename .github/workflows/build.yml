@@ -41,8 +41,16 @@ jobs:
           sudo apt-get install --no-install-recommends -y gcc-mingw-w64-x86-64
           rustup target add x86_64-pc-windows-gnu
 
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
       - name: Build assemblies and patches
         timeout-minutes: 30
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: ./build.sh all
 
       - name: Upload artifact
