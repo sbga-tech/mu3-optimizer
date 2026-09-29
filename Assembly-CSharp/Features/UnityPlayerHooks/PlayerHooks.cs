@@ -1,12 +1,14 @@
 using System;
 using System.Runtime.InteropServices;
+using MonoMod;
+using MU3.App;
 using MU3.Mod.Native;
 using UnityEngine;
 
-namespace MU3.Mod;
+namespace MU3.Mod.UnityPlayerHooks;
 
 /// <summary>One startup for the independently enabled player hooks; only GPU waits shut down.</summary>
-internal static class UnityPlayerHooks
+internal static class PlayerHooks
 {
     [Flags]
     private enum HookFlags : uint
@@ -53,10 +55,10 @@ internal static class UnityPlayerHooks
     private static ShutdownDelegate _shutdown;
     private static Host _host;
 
-    internal static void TryStart(GameObject hostObject)
+    [OnStateEnter(nameof(ApplicationMU3.EState.WaitAMDaemonReady))]
+    [MonoModIfFlag(nameof(PatchConfig.UnityPlayerHooks))]
+    internal static void TryStart(ApplicationMU3 application)
     {
-        if (!MonoMod.PatchConfig.UnityPlayerHooks)
-            return;
         var flags = (MonoMod.UnityPlayerHooksConfig.GpuFenceWait ? HookFlags.GpuWait : HookFlags.None)
             | (MonoMod.UnityPlayerHooksConfig.JobSignalBatching ? HookFlags.JobSignal : HookFlags.None);
         if (flags == HookFlags.None)
@@ -70,7 +72,7 @@ internal static class UnityPlayerHooks
 
         try
         {
-            Start(flags, hostObject);
+            Start(flags, application.gameObject);
         }
         catch (Exception exception)
         {
