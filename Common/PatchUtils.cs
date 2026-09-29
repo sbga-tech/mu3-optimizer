@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.InlineRT;
+using MonoMod.Utils;
 
 namespace MonoMod;
 
@@ -10,6 +12,7 @@ static partial class MonoModRules
     internal static void InitializePatch()
     {
         var module = GetCurrentRulesModule();
+        RequireSingleMemberOwners(module, GetCurrentModder().Module);
         var patchConfig = module.GetType("MonoMod.PatchConfig") ??
                           throw new InvalidOperationException("MonoMod.PatchConfig not found in " + module.Name);
 
@@ -134,6 +137,107 @@ static partial class MonoModRules
             {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    // MonoMod keeps one body per target member: a second patch type that wraps the
+    // same method reuses the first orig_ and silently drops the first wrapper. Any
+    // switch combination is valid, so ownership is checked regardless of flags.
+    private static void RequireSingleMemberOwners(ModuleDefinition mod, ModuleDefinition target)
+    {
+        var owners = new Dictionary<string, string>();
+        var conflicts = new List<string>();
+        foreach (var type in mod.Types)
+        {
+            if (type.Name == "<Module>" || type.Namespace == "MonoMod" || type.Namespace.StartsWith("MonoMod.")
+                || HasAttribute(type, "MonoMod.MonoModIgnore") || target.GetType(type.GetPatchFullName()) == null)
+                continue;
+            CollectWrittenMembers(type, type.FullName, target, owners, conflicts);
+        }
+
+        if (conflicts.Count != 0)
+            throw new InvalidOperationException("Target members written by more than one patch type:\n  "
+                                                + string.Join("\n  ", conflicts.ToArray()));
+    }
+
+    private static void CollectWrittenMembers(TypeDefinition type, string owner, ModuleDefinition target,
+        Dictionary<string, string> owners, List<string> conflicts)
+    {
+        var targetName = type.GetPatchFullName();
+        var targetType = target.GetType(targetName);
+        // Compiler-generated closure types get identical constructors and singleton fields.
+        var generated = type.Name.StartsWith("<");
+
+        var ignoredAccessors = new HashSet<MethodDefinition>();
+        foreach (var property in type.Properties)
+        {
+            if (!HasAttribute(property, "MonoMod.MonoModIgnore"))
+                continue;
+            if (property.GetMethod != null)
+                ignoredAccessors.Add(property.GetMethod);
+            if (property.SetMethod != null)
+                ignoredAccessors.Add(property.SetMethod);
+        }
+
+        foreach (var method in type.Methods)
+        {
+            if (ignoredAccessors.Contains(method) || method.Name.StartsWith("orig_")
+                || HasAttribute(method, "MonoMod.MonoModIgnore") || HasAttribute(method, "MonoMod.MonoModOriginal"))
+                continue;
+            // MonoMod only copies instance constructors into types it adds.
+            if (method.IsConstructor && (generated || (targetType != null && !method.IsStatic
+                                                       && !HasAttribute(method, "MonoMod.MonoModConstructor"))))
+                continue;
+
+            var signature = new List<string>();
+            foreach (var parameter in method.Parameters)
+                signature.Add(parameter.ParameterType.GetPatchFullName());
+            Claim(targetName + "::" + method.Name + "(" + string.Join(",", signature.ToArray()) + ")");
+        }
+
+        foreach (var field in type.Fields)
+        {
+            // Fields that already exist on the target are references, not additions.
+            if (HasAttribute(field, "MonoMod.MonoModIgnore") || (generated && field.Name == "<>9")
+                || (targetType != null && HasField(targetType, field.Name)))
+                continue;
+            Claim(targetName + "::" + field.Name);
+        }
+
+        foreach (var nested in type.NestedTypes)
+        {
+            if (!HasAttribute(nested, "MonoMod.MonoModIgnore"))
+                CollectWrittenMembers(nested, owner, target, owners, conflicts);
+        }
+
+        void Claim(string member)
+        {
+            if (!owners.TryGetValue(member, out var existing))
+                owners.Add(member, owner);
+            else if (existing != owner)
+                conflicts.Add(member + ": " + existing + ", " + owner);
+        }
+    }
+
+    private static bool HasField(TypeDefinition type, string name)
+    {
+        foreach (var field in type.Fields)
+        {
+            if (field.Name == name)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasAttribute(ICustomAttributeProvider provider, string fullName)
+    {
+        foreach (var attribute in provider.CustomAttributes)
+        {
+            if (attribute.AttributeType.FullName == fullName)
+                return true;
         }
 
         return false;
