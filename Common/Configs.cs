@@ -36,8 +36,8 @@ namespace MonoMod
         [IniField("Optimization", "PrimitiveMeshEmission", 0)]
         public static bool PrimitiveMeshEmission;
 
-        [IniField("Optimization", "JudgementPrewarm", 0)]
-        public static bool JudgementPrewarm;
+        [IniField("Optimization", "GameplayPrewarm", 0)]
+        public static bool GameplayPrewarm;
 
         [IniField("Optimization", "UVAnimation", 1)]
         public static bool UVAnimation;
