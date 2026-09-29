@@ -30,9 +30,6 @@ namespace MonoMod
         [IniField("Optimization", "NoteBatching", 1)]
         public static bool NoteBatching;
 
-        [IniField("Optimization", "ActiveNoteTraversal", 0)]
-        public static bool ActiveNoteTraversal;
-
         [IniField("Optimization", "PrimitiveMeshEmission", 0)]
         public static bool PrimitiveMeshEmission;
 
