@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>AMDaemon.NET.Steroid.mm</AssemblyName>
-        <Version>0.0.3</Version>
+        <Version>0.1.0</Version>
         <TargetFramework>net35</TargetFramework>
         <Company>oshinop</Company>
         <LangVersion>latest</LangVersion>
