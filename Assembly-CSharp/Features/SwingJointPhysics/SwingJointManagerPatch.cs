@@ -30,7 +30,7 @@ public class SwingJointManagerPatch : SwingJointManager
     // initializers never run).
     private static int _fpsFrame;
     private static bool _fpsRun;
-    private static float _fpsLastSolve;
+    private static FrameRateLimiter _fpsLimiter;
 
     /// <summary>
     /// SwingJoint verlet has no deltaTime term: at 120+ fps render the sway
@@ -48,18 +48,7 @@ public class SwingJointManagerPatch : SwingJointManager
         if (frame != _fpsFrame)
         {
             _fpsFrame = frame;
-            var interval = 1f / fps;
-            var now = Time.unscaledTime;
-            _fpsRun = now - _fpsLastSolve >= interval;
-            if (_fpsRun)
-            {
-                // Carry the schedule instead of resetting to now, so frame
-                // quantization does not erode the average rate; resync after
-                // stalls to avoid burst catch-up solves.
-                _fpsLastSolve += interval;
-                if (now - _fpsLastSolve >= interval)
-                    _fpsLastSolve = now;
-            }
+            _fpsRun = _fpsLimiter.Tick(Time.unscaledTime, fps);
         }
         return _fpsRun;
     }

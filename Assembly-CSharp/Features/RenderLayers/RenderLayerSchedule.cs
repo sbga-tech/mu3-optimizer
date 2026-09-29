@@ -9,25 +9,33 @@ internal struct RenderLayerSchedule
     internal const int FX = 4;
 
     private bool _initialized;
-    private float _lastStage;
-    private float _lastMerge;
-    private float _lastFX;
+    private FrameRateLimiter _stage;
+    private FrameRateLimiter _merge;
+    private FrameRateLimiter _fx;
 
     internal int Next(float now, float stageFPS, float mergeFPS, float fxFPS, bool force)
     {
-        force |= !_initialized || now < _lastStage || now < _lastMerge || now < _lastFX;
-        var stage = force || IsDue(now, _lastStage, stageFPS);
-        var merge = stage || force || IsDue(now, _lastMerge, mergeFPS);
-        var fx = merge || force || IsDue(now, _lastFX, fxFPS);
-        if (stage) _lastStage = now;
-        if (merge) _lastMerge = now;
-        if (fx) _lastFX = now;
+        force |= !_initialized;
         _initialized = true;
+        var stage = IsDue(ref _stage, now, stageFPS, force);
+        var merge = IsDue(ref _merge, now, mergeFPS, force || stage);
+        var fx = IsDue(ref _fx, now, fxFPS, force || merge);
         return (stage ? Stage : 0) | (merge ? Merge : 0) | (fx ? FX : 0);
     }
 
-    private static bool IsDue(float now, float last, float fps)
+    // Negative rates redraw every frame, 0 only when forced, and positive rates at most that many
+    // times per second. A forced redraw counts against the layer's schedule.
+    private static bool IsDue(ref FrameRateLimiter limiter, float now, float fps, bool force)
     {
-        return fps < 0f || (fps > 0f && now - last >= 1f / fps);
+        if (fps < 0f)
+            return true;
+        if (force)
+        {
+            if (fps > 0f)
+                limiter.Force(now, fps);
+            return true;
+        }
+
+        return fps > 0f && limiter.Tick(now, fps);
     }
 }
