@@ -15,7 +15,8 @@ internal static class PlayerHooks
     {
         None = 0,
         GpuWait = 1,
-        JobSignal = 2
+        JobSignal = 2,
+        GraphicsJobs = 4
     }
 
     // Match the encoded i32 statuses in Native/mu3player/src/status.zig:
@@ -37,6 +38,13 @@ internal static class PlayerHooks
         JobTargetResolutionFailed = 0x00020004,
         JobMinHookFailed = 0x00020005,
         JobHookFailed = 0x00020006,
+        GraphicsJobsUnsupported = 0x00030001,
+        GraphicsJobsAlreadyAttempted = 0x00030002,
+        GraphicsJobsInvalidPlayerImage = 0x00030003,
+        GraphicsJobsTargetResolutionFailed = 0x00030004,
+        GraphicsJobsMinHookFailed = 0x00030005,
+        GraphicsJobsHookFailed = 0x00030006,
+        GraphicsJobsDeviceUnavailable = 0x00030007,
         InvalidFeature = 0x00000001
     }
 
@@ -60,7 +68,8 @@ internal static class PlayerHooks
     internal static void TryStart(ApplicationMU3 application)
     {
         var flags = (MonoMod.UnityPlayerHooksConfig.GpuFenceWait ? HookFlags.GpuWait : HookFlags.None)
-            | (MonoMod.UnityPlayerHooksConfig.JobSignalBatching ? HookFlags.JobSignal : HookFlags.None);
+            | (MonoMod.UnityPlayerHooksConfig.JobSignalBatching ? HookFlags.JobSignal : HookFlags.None)
+            | (MonoMod.UnityPlayerHooksConfig.GraphicsJobs ? HookFlags.GraphicsJobs : HookFlags.None);
         if (flags == HookFlags.None)
             return;
         lock (Sync)
@@ -91,6 +100,9 @@ internal static class PlayerHooks
 
         if ((flags & HookFlags.JobSignal) != HookFlags.None)
             ReportJobSignal(init(HookFlags.JobSignal));
+        // Must run on the main thread: native init records its device as the one whose deletes stay immediate.
+        if ((flags & HookFlags.GraphicsJobs) != HookFlags.None)
+            ReportGraphicsJobs(init(HookFlags.GraphicsJobs));
         if ((flags & HookFlags.GpuWait) != HookFlags.None)
             StartGpuWait(init(HookFlags.GpuWait), hostObject);
     }
@@ -100,6 +112,13 @@ internal static class PlayerHooks
         if (status != PlayerStatus.Success)
             Debug.LogWarning(LogPrefix + "JobSignalBatching native init returned " + status
                 + " (0x" + ((int)status).ToString("X8") + "); original signal behavior preserved.");
+    }
+
+    private static void ReportGraphicsJobs(PlayerStatus status)
+    {
+        if (status != PlayerStatus.Success)
+            Debug.LogWarning(LogPrefix + "GraphicsJobs native init returned " + status
+                + " (0x" + ((int)status).ToString("X8") + "); graphics jobs not switched on.");
     }
 
     private static void StartGpuWait(PlayerStatus status, GameObject hostObject)

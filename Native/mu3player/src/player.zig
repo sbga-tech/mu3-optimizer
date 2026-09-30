@@ -31,6 +31,27 @@ pub const SignalTargets = struct {
     signal: u32,
 };
 
+pub const GraphicsJobsTargets = struct {
+    /// `SharedGfxBuffer` deleting destructor.
+    destructor: u32,
+    /// `PreLateUpdate.EndGraphicsJobsLate` player-loop forward.
+    end_graphics_jobs: u32,
+    /// `GetThreadedGfxDevice`.
+    threaded_device: u32,
+    /// `GetPlayerSettingsPtr`.
+    settings_getter: u32,
+    /// `g_SharedPassContext` pointer slot.
+    pass_context_slot: u32,
+};
+
+/// `GfxDevice::DeleteBuffer` vtable byte offset called by the matched destructor.
+pub const device_delete_buffer_slot: usize = 0x218;
+
+/// `PlayerSettings::graphicsJobs`, the byte `-force-gfx-jobs` writes.
+pub const settings_graphics_jobs_offset: usize = 0x26B;
+/// `ShaderPassContext::isUsingJobifiedRendering`, copied once from `graphicsJobs` at startup.
+pub const pass_context_jobified_offset: usize = 0xC1;
+
 /// A wildcard covers a documented relative-address operand, never an opcode.
 const Pattern = struct {
     bytes: []const u8,
@@ -245,11 +266,119 @@ const signal_body = pattern(
         "C3",
 );
 
+// Non-development build. If `m_GfxBuffer` (+0x10) is set, the destructor deletes it through
+// the calling thread's device before freeing itself; a graphics job therefore records the
+// delete into its own command stream.
+const shared_buffer_destructor = pattern(
+    "48 89 5C 24 08 " ++ // save rbx
+        "57 " ++ // push rdi
+        "48 83 EC 20 " ++
+        "48 83 79 10 00 " ++ // cmp [rcx+10h] (m_GfxBuffer), 0
+        "48 8D 05 ?? ?? ?? ?? " ++ // lea rax, [rip+SharedGfxBuffer vtable]
+        "8B FA " ++ // mov edi, edx (delete flags)
+        "48 89 01 " ++
+        "48 8B D9 " ++
+        "74 16 " ++ // no buffer
+        "E8 ?? ?? ?? ?? " ++ // call GetThreadedGfxDevice
+        "48 8B 53 10 " ++ // mov rdx, [rbx+10h]
+        "4C 8B 00 " ++
+        "48 8B C8 " ++
+        "41 FF 90 18 02 00 00 " ++ // call [r8+218h] (GfxDevice::DeleteBuffer)
+        "48 8D 05 ?? ?? ?? ?? " ++ // lea rax, [rip+base vtable]
+        "48 89 03 " ++
+        "40 F6 C7 01 " ++ // test dil, 1
+        "74 08 " ++
+        "48 8B CB " ++
+        "E8 ?? ?? ?? ?? " ++ // call operator delete
+        "48 8B C3 " ++
+        "48 8B 5C 24 30 " ++
+        "48 83 C4 20 " ++
+        "5F " ++
+        "C3",
+);
+
+// `GetThreadedGfxDevice`: TlsGetValue(gfxDeviceThreaded key) as a tail call.
+const threaded_device_getter = pattern("8B 0D ?? ?? ?? ?? 48 FF 25 ?? ?? ?? ??");
+
+// Non-development build. Unless jobs sync at end of frame, completes the frame's async job
+// fences (EndAsyncJobFrame), advances DynamicVBO and swaps its buffers.
+const end_graphics_jobs_late = pattern(
+    "40 53 " ++ // push rbx
+        "48 83 EC 20 " ++
+        "8B 0D ?? ?? ?? ?? " ++ // mov ecx, [rip+gfxDeviceThreaded key]
+        "FF 15 ?? ?? ?? ?? " ++ // call TlsGetValue
+        "48 8B C8 " ++
+        "48 8B D8 " ++
+        "48 8B 10 " ++
+        "FF 92 20 07 00 00 " ++ // call [rdx+720h] (ShouldJobsSyncAtEndOfFrame)
+        "84 C0 " ++
+        "75 2E " ++
+        "48 8B 13 " ++
+        "48 8B CB " ++
+        "FF 92 58 02 00 00 " ++ // call [rdx+258h] (EndAsyncJobFrame)
+        "E8 ?? ?? ?? ?? " ++ // call DynamicVBO::NextFrame
+        "8B 0D ?? ?? ?? ?? " ++ // mov ecx, [rip+gfxDeviceThreaded key]
+        "8B D8 " ++
+        "FF 15 ?? ?? ?? ?? " ++ // call TlsGetValue
+        "8B D3 " ++
+        "4C 8B 00 " ++
+        "48 8B C8 " ++
+        "41 FF 90 50 04 00 00 " ++ // call [r8+450h] (SwapDynamicVBOBuffers)
+        "48 83 C4 20 " ++
+        "5B " ++
+        "C3",
+);
+
+// Non-development build. Creates the root pass context and copies
+// `PlayerSettings.graphicsJobs` (+0x26B) into its `isUsingJobifiedRendering` (+0xC1).
+const pass_context_initialize = pattern(
+    "48 83 EC 38 " ++
+        "BA 14 00 00 00 " ++ // mov edx, kMemShaderId
+        "4C 8D 0D ?? ?? ?? ?? " ++ // lea r9, [rip+file]
+        "B9 C8 00 00 00 " ++ // mov ecx, sizeof(ShaderPassContext)
+        "44 8D 42 FC " ++
+        "C7 44 24 20 0B 00 00 00 " ++
+        "E8 ?? ?? ?? ?? " ++ // call operator new
+        "48 85 C0 " ++
+        "74 08 " ++
+        "48 8B C8 " ++
+        "E8 ?? ?? ?? ?? " ++ // call ShaderPassContext::ShaderPassContext
+        "48 89 05 ?? ?? ?? ?? " ++ // mov [rip+g_SharedPassContext], rax
+        "C6 80 C1 00 00 00 00 " ++ // mov byte [rax+0C1h], 0
+        "E8 ?? ?? ?? ?? " ++ // call GetPlayerSettingsPtr
+        "0F B6 88 6B 02 00 00 " ++ // movzx ecx, byte [rax+26Bh]
+        "48 8B 05 ?? ?? ?? ?? " ++ // mov rax, [rip+g_SharedPassContext]
+        "88 88 C1 00 00 00 " ++ // mov [rax+0C1h], cl
+        "48 83 C4 38 " ++
+        "C3",
+);
+
+// `GetPlayerSettingsPtr`: GetGameManagerIfExists(0) as a tail call.
+const settings_getter = pattern("33 C9 E9 ?? ?? ?? ??");
+// `GetGameManagerIfExists`: managers[index] from a RIP-relative array.
+const game_manager_lookup = pattern("48 63 C1 48 8D 0D ?? ?? ?? ?? 48 8B 04 C1 C3");
+// Per-frame readers that must use the same getter/offset and slot/offset.
+const should_jobs_sync = pattern("48 83 EC 28 E8 ?? ?? ?? ?? 33 C9 38 88 6B 02 00 00 0F 94 C0 48 83 C4 28 C3");
+const num_graphics_jobs = pattern(
+    "48 83 EC 28 48 8B 05 ?? ?? ?? ?? 80 B8 C1 00 00 00 00 74 0C E8 ?? ?? ?? ?? 48 98 48 83 C4 28 C3",
+);
+
 const RelativeOperand = struct { displacement: usize, instruction_end: usize };
 const pop_context_operand: RelativeOperand = .{ .displacement = 0x24, .instruction_end = 0x28 };
 const push_context_operand: RelativeOperand = .{ .displacement = 0x53, .instruction_end = 0x57 };
 const getter_context_operand: RelativeOperand = .{ .displacement = 3, .instruction_end = 7 };
 const signal_import_operand: RelativeOperand = .{ .displacement = 83, .instruction_end = 87 };
+const destructor_getter_call: RelativeOperand = .{ .displacement = 0x21, .instruction_end = 0x25 };
+const getter_key_operand: RelativeOperand = .{ .displacement = 2, .instruction_end = 6 };
+const forward_key_operand: RelativeOperand = .{ .displacement = 8, .instruction_end = 12 };
+const forward_second_key_operand: RelativeOperand = .{ .displacement = 56, .instruction_end = 60 };
+const pass_context_store_operand: RelativeOperand = .{ .displacement = 0x36, .instruction_end = 0x3A };
+const pass_context_getter_call: RelativeOperand = .{ .displacement = 0x42, .instruction_end = 0x46 };
+const pass_context_load_operand: RelativeOperand = .{ .displacement = 0x50, .instruction_end = 0x54 };
+const settings_getter_jump: RelativeOperand = .{ .displacement = 3, .instruction_end = 7 };
+const game_manager_array_operand: RelativeOperand = .{ .displacement = 6, .instruction_end = 10 };
+const should_jobs_sync_call: RelativeOperand = .{ .displacement = 5, .instruction_end = 9 };
+const num_graphics_jobs_slot: RelativeOperand = .{ .displacement = 7, .instruction_end = 11 };
 
 const Headers = struct {
     image_size: u32,
@@ -417,6 +546,46 @@ pub const Image = struct {
         const slot = try self.relativeTarget(try self.codeAt(rva, signal_body.bytes.len), rva, signal_import_operand);
         if (!self.pointerSlot(slot)) return error.MissingPattern;
         return .{ .signal = rva };
+    }
+
+    /// The destructor must call the TLS device getter, and the forward must read the same
+    /// TLS key twice. The root pass-context initializer names the flag bytes; its settings
+    /// getter must be the game-manager lookup, and both per-frame readers must use the same
+    /// getter and slot. Any other shape fails closed.
+    pub fn resolveGraphicsJobs(self: Image) Error!GraphicsJobsTargets {
+        const destructor = try self.find(shared_buffer_destructor);
+        const destructor_code = try self.codeAt(destructor, shared_buffer_destructor.bytes.len);
+        const device = try self.relativeTarget(destructor_code, destructor, destructor_getter_call);
+        const device_code = try self.codeAt(device, threaded_device_getter.bytes.len);
+        if (!threaded_device_getter.matches(device_code)) return error.MissingPattern;
+        const key = try self.relativeTarget(device_code, device, getter_key_operand);
+        if (!self.pointerSlot(key)) return error.MissingPattern;
+        const forward = try self.findReferencing(end_graphics_jobs_late, .{ .operand = forward_key_operand, .target = key });
+        const forward_code = try self.codeAt(forward, end_graphics_jobs_late.bytes.len);
+        if (try self.relativeTarget(forward_code, forward, forward_second_key_operand) != key) return error.MissingPattern;
+
+        const initializer = try self.find(pass_context_initialize);
+        const code = try self.codeAt(initializer, pass_context_initialize.bytes.len);
+        const slot = try self.relativeTarget(code, initializer, pass_context_store_operand);
+        if (try self.relativeTarget(code, initializer, pass_context_load_operand) != slot or !self.pointerSlot(slot))
+            return error.MissingPattern;
+        const settings = try self.relativeTarget(code, initializer, pass_context_getter_call);
+        const settings_code = try self.codeAt(settings, settings_getter.bytes.len);
+        if (!settings_getter.matches(settings_code)) return error.MissingPattern;
+        const lookup = try self.relativeTarget(settings_code, settings, settings_getter_jump);
+        const lookup_code = try self.codeAt(lookup, game_manager_lookup.bytes.len);
+        if (!game_manager_lookup.matches(lookup_code)) return error.MissingPattern;
+        if (!self.pointerSlot(try self.relativeTarget(lookup_code, lookup, game_manager_array_operand)))
+            return error.MissingPattern;
+        _ = try self.findReferencing(should_jobs_sync, .{ .operand = should_jobs_sync_call, .target = settings });
+        _ = try self.findReferencing(num_graphics_jobs, .{ .operand = num_graphics_jobs_slot, .target = slot });
+        return .{
+            .destructor = destructor,
+            .end_graphics_jobs = forward,
+            .threaded_device = device,
+            .settings_getter = settings,
+            .pass_context_slot = slot,
+        };
     }
 
     /// Only resolved RVAs from this mapped image may be converted to addresses.
