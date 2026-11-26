@@ -19,12 +19,15 @@ readonly NATIVE_TARGET="x86_64-pc-windows-gnu"
 readonly NATIVE_ROOT="$ROOT/Native"
 readonly NATIVE_BUILD="$NATIVE_ROOT/Build"
 readonly DOCKER="docker"
+readonly MANAGED_OUTPUT="bin/$CONFIGURATION/net35"
+readonly TOOL_PROJECT="tools/MonoModTool/MonoModTool.csproj"
+readonly TOOL="tools/MonoModTool/bin/$CONFIGURATION/net8.0/MonoModTool.dll"
 UNITY_BUNDLE_STAGE=
 UNITY_BUNDLE_IMPORT_STAGE=
 
 usage() {
     cat <<'EOF'
-Usage: ./build.sh [all|build-assets|build-native|build-main|patch]
+Usage: ./build.sh [all|build-assets|build-native|build-main|patch|check]
 
   all           Build every labelled AssetBundle, collect every native DLL,
                 build the managed assemblies, and apply both MonoMod patches.
@@ -35,6 +38,9 @@ Usage: ./build.sh [all|build-assets|build-native|build-main|patch]
   build-main    Collect native DLLs, then build Steroid.sln in the pinned
                 .NET SDK container using UnityAssets/Build and Native/Build.
   patch         Apply both MonoMod assemblies in the pinned .NET SDK container.
+  check         Run the native host tests, build-main, and the switch check:
+                every switch off must match an empty MonoMod pass, and each
+                switch alone may change only the game types it patches.
 
 Unity activation for all/build-assets:
   UNITY_EMAIL            Unity account email
@@ -249,30 +255,59 @@ build_main() {
     run_dotnet build Steroid.sln -c "$CONFIGURATION" --no-incremental --force
 }
 
+build_tool() {
+    run_dotnet build "$TOOL_PROJECT" -c "$CONFIGURATION" --no-incremental --force
+    [[ -f "$ROOT/$TOOL" ]] || fail "MonoModTool not found: $ROOT/$TOOL"
+}
+
 apply_one_monomod() {
-    local helper="$1"
-    local output="$2"
-    local stem="$3"
-    local assembly="$output/$stem.dll"
-    local mod="$output/$stem.Steroid.mm.dll"
-    local patched="$output/MONOMODDED_$stem.dll"
+    local stem="$1"
+    local assembly="$MANAGED_OUTPUT/$stem.dll"
+    local mod="$MANAGED_OUTPUT/$stem.Steroid.mm.dll"
+    local patched="$MANAGED_OUTPUT/MONOMODDED_$stem.dll"
 
     [[ -f "$ROOT/$assembly" ]] || fail "$stem input assembly not found: $ROOT/$assembly"
     [[ -f "$ROOT/$mod" ]] || fail "$stem mod assembly not found: $ROOT/$mod"
     rm -f "$ROOT/$patched" "$ROOT/$patched.mdb"
-    run_dotnet "$helper" "$assembly" "$patched" "$mod"
+    run_dotnet "$TOOL" apply "$assembly" "$patched" "$mod"
     [[ -s "$ROOT/$patched" ]] || fail "MonoMod did not produce $ROOT/$patched"
 }
 
 apply_monomod() {
-    local helper_project="tools/MonoModApply/MonoModApply.csproj"
-    local helper="tools/MonoModApply/bin/$CONFIGURATION/net8.0/MonoModApply.dll"
-    local output="bin/$CONFIGURATION/net35"
+    build_tool
+    apply_one_monomod "Assembly-CSharp"
+    apply_one_monomod "AMDaemon.NET"
+}
 
-    run_dotnet build "$helper_project" -c "$CONFIGURATION" --no-incremental --force
-    [[ -f "$ROOT/$helper" ]] || fail "MonoMod helper not found: $ROOT/$helper"
-    apply_one_monomod "$helper" "$output" "Assembly-CSharp"
-    apply_one_monomod "$helper" "$output" "AMDaemon.NET"
+test_native() {
+    require_command zig
+    require_command cargo
+
+    local manifest project_dir test_file
+    for manifest in "$NATIVE_ROOT"/*/Cargo.toml; do
+        [[ -f "$manifest" ]] || continue
+        (cd "${manifest%/Cargo.toml}" && cargo test --quiet)
+    done
+    for manifest in "$NATIVE_ROOT"/*/build.zig; do
+        [[ -f "$manifest" ]] || continue
+        project_dir="${manifest%/build.zig}"
+        while IFS= read -r test_file; do
+            (cd "$project_dir" && zig test "$test_file")
+        done < <(cd "$project_dir" && grep -rl --include='*.zig' '^test "' src | sort)
+    done
+}
+
+check_switches() {
+    local stem
+    build_tool
+    rm -rf "${ROOT:?}/obj/switch-check"
+    for stem in Assembly-CSharp AMDaemon.NET; do
+        printf 'Switch check: %s\n' "$stem"
+        run_dotnet "$TOOL" check \
+            "$MANAGED_OUTPUT/$stem.dll" \
+            "$MANAGED_OUTPUT/$stem.Steroid.mm.dll" \
+            "obj/switch-check/$stem"
+    done
 }
 
 command="${1:-all}"
@@ -286,6 +321,11 @@ case "$command" in
     build-native) build_native ;;
     build-main) build_main ;;
     patch) apply_monomod ;;
+    check)
+        test_native
+        build_main
+        check_switches
+        ;;
     -h|--help|help) usage ;;
     *) usage >&2; fail "unknown command: $command" ;;
 esac

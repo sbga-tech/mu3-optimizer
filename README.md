@@ -217,9 +217,10 @@ UNITY_EMAIL=... UNITY_PASSWORD=... ./build.sh build-assets
 ./build.sh build-native
 ./build.sh build-main
 ./build.sh patch
+./build.sh check
 ```
 
-`build-native` builds every project under `Native/` that has a `build.zig` or `Cargo.toml` and collects the Windows DLLs into `Native/Build`. `build-main` builds the reference projects and then the optimizer. The container needs write access to the reference projects' generated `obj/` and `artifacts/` directories. `patch` applies both optimizer modules to those build outputs and writes portable PDBs next to the patched assemblies.
+`build-native` builds every project under `Native/` that has a `build.zig` or `Cargo.toml` and collects the Windows DLLs into `Native/Build`. `build-main` builds the reference projects and then the optimizer. The container needs write access to the reference projects' generated `obj/` and `artifacts/` directories. `patch` applies both optimizer modules to those build outputs and writes portable PDBs next to the patched assemblies. `check` runs the native unit tests and `build-main`, then patches the game once with every switch off, once per switch, and once with every switch on, and fails if a switch changes game code outside its own patches.
 
 Outputs:
 

@@ -3,6 +3,6 @@
 bin
 obj
 tools/*
-!tools/MonoModApply/
+!tools/MonoModTool/
 *.DotSettings.user
 .DS_Store
