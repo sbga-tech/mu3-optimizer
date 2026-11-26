@@ -22,12 +22,15 @@ readonly DOCKER="docker"
 readonly MANAGED_OUTPUT="bin/$CONFIGURATION/net35"
 readonly TOOL_PROJECT="tools/MonoModTool/MonoModTool.csproj"
 readonly TOOL="tools/MonoModTool/bin/$CONFIGURATION/net8.0/MonoModTool.dll"
+readonly WORKFLOW_ROOT="$ROOT/../mu3-workflow"
+readonly ENDPOINT="${MU3_ENDPOINT:-$ROOT/../.omp/current-endpoint.json}"
+ENDPOINT_HOST=
 UNITY_BUNDLE_STAGE=
 UNITY_BUNDLE_IMPORT_STAGE=
 
 usage() {
     cat <<'EOF'
-Usage: ./build.sh [all|build-assets|build-native|build-main|patch|check]
+Usage: ./build.sh [all|build-assets|build-native|build-main|patch|check|deploy SESSION]
 
   all           Build every labelled AssetBundle, collect every native DLL,
                 build the managed assemblies, and apply both MonoMod patches.
@@ -41,6 +44,11 @@ Usage: ./build.sh [all|build-assets|build-native|build-main|patch|check]
   check         Run the native host tests, build-main, and the switch check:
                 every switch off must match an empty MonoMod pass, and each
                 switch alone may change only the game types it patches.
+  deploy SESSION
+                Copy both .mm.dll files into an idle mu3perf session's
+                package/BepInEx/monomod and print local and remote SHA-256.
+                The runner endpoint is ../.omp/current-endpoint.json unless
+                MU3_ENDPOINT names another file.
 
 Unity activation for all/build-assets:
   UNITY_EMAIL            Unity account email
@@ -310,6 +318,52 @@ check_switches() {
     done
 }
 
+mu3perf() {
+    uv run --quiet --project "$WORKFLOW_ROOT" mu3perf --json \
+        --ssh-config "$ENDPOINT" --host "$ENDPOINT_HOST" "$@"
+}
+
+deploy() {
+    local session="${1:-}"
+    [[ "$session" =~ ^[A-Za-z0-9_-]{1,80}$ ]] || fail "deploy needs a runner session name"
+    require_command jq
+    require_command uv
+    require_command ssh
+    require_command scp
+    [[ -f "$ENDPOINT" ]] || fail "runner endpoint not found: $ENDPOINT"
+    ENDPOINT_HOST="$(jq -er '.hosts | keys | if length == 1 then .[0] else error("set MU3_ENDPOINT to a file with one host") end' "$ENDPOINT")"
+
+    local status busy
+    status="$(mu3perf status --session "$session")" || \
+        fail "mu3perf status failed: $(jq -r '.error // .' <<<"$status")"
+    busy="$(jq -r '[.runs[] | select(.state == "queued" or .state == "running") | .run_id] | join(" ")' <<<"$status")"
+    [[ -z "$busy" ]] || fail "session $session has queued or running work: $busy"
+
+    local address user port transfer_root
+    local -a ssh_options
+    address="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].host' "$ENDPOINT")"
+    user="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].username' "$ENDPOINT")"
+    port="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].port' "$ENDPOINT")"
+    transfer_root="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].transfer_root' "$ENDPOINT")"
+    mapfile -t ssh_options < <(jq -r --arg h "$ENDPOINT_HOST" '.hosts[$h].ssh_options // [] | .[]' "$ENDPOINT")
+    ssh_options+=(-o BatchMode=yes)
+
+    local destination="$transfer_root/sessions/$session/package/BepInEx/monomod"
+    local stem local_file remote_file
+    ssh -p "$port" "${ssh_options[@]}" "$user@$address" "test -d '$destination'" || \
+        fail "session package not found on $ENDPOINT_HOST: $destination"
+    for stem in Assembly-CSharp AMDaemon.NET; do
+        local_file="$ROOT/$MANAGED_OUTPUT/$stem.Steroid.mm.dll"
+        remote_file="$destination/$stem.Steroid.mm.dll"
+        [[ -s "$local_file" ]] || fail "mod assembly not found; run ./build.sh check first: $local_file"
+        scp -q -P "$port" "${ssh_options[@]}" "$local_file" "$user@$address:$remote_file.partial"
+        printf '%s  local  %s\n' "$(shasum -a 256 "$local_file" | cut -d' ' -f1)" "$stem.Steroid.mm.dll"
+        ssh -p "$port" "${ssh_options[@]}" "$user@$address" \
+            "mv -f '$remote_file.partial' '$remote_file' && sha256sum '$remote_file'" | \
+            awk -v name="$stem.Steroid.mm.dll" '{ print $1 "  remote " name }'
+    done
+}
+
 command="${1:-all}"
 case "$command" in
     all)
@@ -326,6 +380,7 @@ case "$command" in
         build_main
         check_switches
         ;;
+    deploy) deploy "${2:-}" ;;
     -h|--help|help) usage ;;
     *) usage >&2; fail "unknown command: $command" ;;
 esac
