@@ -18,7 +18,7 @@ MU3 Optimizer is a set of MonoMod patches for MU3 sddt160. The patches cut down 
    AMDaemon.NET.Steroid.mm.dll
    ```
 
-2. Put `mu3.ini` in the game's working directory, which is normally `package/`. If you keep it somewhere else, point `MU3_MODS_CONFIG_PATH` at it.
+2. Put `mu3.ini` in the game's working directory, which is normally `package/`. If you keep it somewhere else, point `MU3_CONFIG_PATH` at it. The older `MU3_MODS_CONFIG_PATH` still works when `MU3_CONFIG_PATH` isn't set.
 3. Start the game.
 
 MonoMod reads `mu3.ini` when it patches the game at startup, so restart the game after you change a setting.

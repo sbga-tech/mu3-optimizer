@@ -36,7 +36,10 @@ class IniFieldAttribute : Attribute
 
 static partial class MonoModRules
 {
-    internal static string IniPath => Environment.GetEnvironmentVariable("MU3_MODS_CONFIG_PATH") ?? "mu3.ini";
+    internal static string IniPath =>
+        Environment.GetEnvironmentVariable("MU3_CONFIG_PATH")
+        ?? Environment.GetEnvironmentVariable("MU3_MODS_CONFIG_PATH")
+        ?? "mu3.ini";
 
     public static void IniConfig(TypeDefinition type, CustomAttribute attribute)
     {

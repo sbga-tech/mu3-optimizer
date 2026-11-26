@@ -162,7 +162,7 @@ run_dotnet() {
         --env DOTNET_CLI_TELEMETRY_OPTOUT=1 \
         --env DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
         --env DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=true \
-        --env MU3_MODS_CONFIG_PATH=/workspace/mu3-optimizer/mu3.ini \
+        --env MU3_CONFIG_PATH=/workspace/mu3-optimizer/mu3.ini \
         --env DOTNET_NOLOGO=1 \
         --volume "$ROOT:/workspace/mu3-optimizer" \
         --volume "$ROOT/../mu3-reference:/workspace/mu3-reference" \
