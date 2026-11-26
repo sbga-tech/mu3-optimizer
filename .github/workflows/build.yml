@@ -1,6 +1,9 @@
-name: Build and Patch
+name: Build and Check
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
   workflow_call:
     secrets:
@@ -46,12 +49,27 @@ jobs:
         with:
           version: 0.16.0
 
-      - name: Build assemblies and patches
+      - name: Restore AssetBundles
+        id: bundles
+        uses: actions/cache@v4
+        with:
+          path: mu3-optimizer/UnityAssets/Build
+          key: unity-bundles-${{ hashFiles('mu3-optimizer/UnityAssets/Assets/**', 'mu3-optimizer/UnityAssets/ProjectSettings/**', 'mu3-optimizer/docker/unity-wine/**') }}
+
+      - name: Build AssetBundles
+        if: steps.bundles.outputs.cache-hit != 'true'
         timeout-minutes: 30
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: ./build.sh all
+        run: ./build.sh build-assets
+
+      - name: Check
+        timeout-minutes: 30
+        run: ./build.sh check
+
+      - name: Patch
+        run: ./build.sh patch
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
