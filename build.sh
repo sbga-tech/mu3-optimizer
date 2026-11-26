@@ -345,7 +345,7 @@ deploy() {
     user="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].username' "$ENDPOINT")"
     port="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].port' "$ENDPOINT")"
     transfer_root="$(jq -er --arg h "$ENDPOINT_HOST" '.hosts[$h].transfer_root' "$ENDPOINT")"
-    mapfile -t ssh_options < <(jq -r --arg h "$ENDPOINT_HOST" '.hosts[$h].ssh_options // [] | .[]' "$ENDPOINT")
+    mapfile -t ssh_options < <(jq -r --arg h "$ENDPOINT_HOST" '.hosts[$h].ssh_options // [] | .[] | "-o", .' "$ENDPOINT")
     ssh_options+=(-o BatchMode=yes)
 
     local destination="$transfer_root/sessions/$session/monomod"
