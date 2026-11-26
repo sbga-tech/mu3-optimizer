@@ -5,7 +5,4 @@ obj
 tools/*
 !tools/MonoModApply/
 *.DotSettings.user
-captures
-/old
-venv
 .DS_Store
