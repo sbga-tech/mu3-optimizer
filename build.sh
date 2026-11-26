@@ -46,7 +46,7 @@ Usage: ./build.sh [all|build-assets|build-native|build-main|patch|check|deploy S
                 switch alone may change only the game types it patches.
   deploy SESSION
                 Copy both .mm.dll files into an idle mu3perf session's
-                package/BepInEx/monomod and print local and remote SHA-256.
+                monomod folder and print local and remote SHA-256.
                 The runner endpoint is ../.omp/current-endpoint.json unless
                 MU3_ENDPOINT names another file.
 
@@ -348,10 +348,10 @@ deploy() {
     mapfile -t ssh_options < <(jq -r --arg h "$ENDPOINT_HOST" '.hosts[$h].ssh_options // [] | .[]' "$ENDPOINT")
     ssh_options+=(-o BatchMode=yes)
 
-    local destination="$transfer_root/sessions/$session/package/BepInEx/monomod"
+    local destination="$transfer_root/sessions/$session/monomod"
     local stem local_file remote_file
     ssh -p "$port" "${ssh_options[@]}" "$user@$address" "test -d '$destination'" || \
-        fail "session package not found on $ENDPOINT_HOST: $destination"
+        fail "session monomod folder not found on $ENDPOINT_HOST: $destination; create the session with the current setup-workspace.ps1"
     for stem in Assembly-CSharp AMDaemon.NET; do
         local_file="$ROOT/$MANAGED_OUTPUT/$stem.Steroid.mm.dll"
         remote_file="$destination/$stem.Steroid.mm.dll"
