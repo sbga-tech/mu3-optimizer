@@ -65,6 +65,11 @@ BGMergeFPS=60
 FXFPS=60
 ; Turns off shadows after the opening cutscene.
 DisableShadows=1
+; Draws the FX gate texture only when the FX layer redraws; off by default.
+ScheduleGateCamera=0
+; During transition effects, redraws only the FX layer every frame while the
+; camera stays still; off by default.
+EventFXOnly=0
 
 [Optimization.SwingJointPhysics]
 ; Most physics updates per second. 0 or below updates every rendered frame.
@@ -91,6 +96,10 @@ The game draws the stage, a merged background, and the background effects with s
 Every layer redraws each frame whenever the game needs it: at the start of a battle, during the opening cutscene, around damage, wave-change, and overkill effects, and whenever the game isn't in normal play. `DisableShadows=1`, which is on by default, also turns off shadows after the opening cutscene.
 
 Rates below your frame rate can make animated backgrounds look less smooth, and turning off shadows changes the scene's lighting.
+
+`ScheduleGateCamera=1` also limits a fourth camera. The battle stage has an extra camera that draws the gate particles into a small texture on every frame, and only the FX layer uses that texture. With this setting, that camera draws only on the frames where the FX layer redraws. When the FX layer redraws every frame, the picture is exactly the same. At lower FX rates, the gate texture the FX layer shows can be up to one FX redraw older than before. It helps most with `FXFPS=0` or other low FX rates.
+
+`EventFXOnly=1` changes what happens during those transition effects. The wave-change, overkill, damage, and battle-start effects are drawn on the FX layer, and the camera doesn't move during them in normal play. With this setting, only the FX layer redraws every frame during an effect. The stage and merged background keep their normal rates, unless the camera moves, and every layer still redraws on the first and last frame of the effect. With `StageFPS=0`, the stage then stays as it was until the effect ends, instead of animating during it.
 
 ### `SwingJointPhysics`
 
@@ -240,4 +249,3 @@ Install only the two `.mm.dll` files if you are using BepInEx MonoMod loader. Th
 - `Assembly-CSharp/Features/<Switch>/` and `AMDaemon.NET/Features/<Switch>/`: everything that belongs to one `[Optimization]` switch, in namespace `MU3.Mod.<Switch>`. MonoMod rules stay in the `MonoMod` namespace.
 - `Assembly-CSharp/Runtime/`: embedded native-module and AssetBundle loading, and the frame-rate limiter, shared by several switches.
 - `*/MonoMod/Rules.cs`: the MonoMod rules entry points. `Common/` holds the configuration and patch lifecycle code shared by both projects.
-

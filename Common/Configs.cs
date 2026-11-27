@@ -69,6 +69,14 @@ namespace MonoMod
 
         [IniField("Optimization.RenderLayers", "DisableShadows", 1)]
         public static bool DisableShadows;
+
+        // The FX gate camera renders only on frames where the FX layer redraws.
+        [IniField("Optimization.RenderLayers", "ScheduleGateCamera", 0)]
+        public static bool ScheduleGateCamera;
+
+        // During transition effects, only the FX layer redraws every frame while the camera is still.
+        [IniField("Optimization.RenderLayers", "EventFXOnly", 0)]
+        public static bool EventFXOnly;
     }
 
     [IniConfig]

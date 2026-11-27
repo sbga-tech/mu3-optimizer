@@ -13,13 +13,13 @@ internal struct RenderLayerSchedule
     private FrameRateLimiter _merge;
     private FrameRateLimiter _fx;
 
-    internal int Next(float now, float stageFPS, float mergeFPS, float fxFPS, bool force)
+    internal int Next(float now, float stageFPS, float mergeFPS, float fxFPS, bool force, bool forceFX)
     {
         force |= !_initialized;
         _initialized = true;
         var stage = IsDue(ref _stage, now, stageFPS, force);
         var merge = IsDue(ref _merge, now, mergeFPS, force || stage);
-        var fx = IsDue(ref _fx, now, fxFPS, force || merge);
+        var fx = IsDue(ref _fx, now, fxFPS, force || merge || forceFX);
         return (stage ? Stage : 0) | (merge ? Merge : 0) | (fx ? FX : 0);
     }
 

@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using MonoMod;
 using MU3.Battle;
+using MU3.Util;
 using UnityEngine;
 
 namespace MU3.Mod.RenderLayers;
@@ -20,6 +22,14 @@ public class BattleCameraPatch : BattleCamera
     private bool _forceLayers = true;
     private float _refreshLayersUntil = float.NegativeInfinity;
     private bool _wasRefreshingLayers;
+    // Cameras that draw the FX gate texture, which only FX-layer (post-stage) effects sample.
+    // Null when there are none: MonoMod does not run patch-class field initializers.
+    private Camera[] _gateCameras;
+    // Camera matrices at the previous event-window frame (EventFXOnly).
+    private Matrix4x4 _lastMainView;
+    private Matrix4x4 _lastMainProjection;
+    private Matrix4x4 _lastStageView;
+    private Matrix4x4 _lastStageProjection;
 
     private extern void orig_Awake();
 
@@ -78,7 +88,41 @@ public class BattleCameraPatch : BattleCamera
             if (_postStageCamera != null)
                 _postStageCamera.targetTexture = _postStageRenderTexture;
         }
+        SetGateCameras(true);
+        _gateCameras = FindGateCameras();
         _forceLayers = true;
+    }
+
+    // The battle stage's FX gate camera draws layer 29 into its own texture. Only layer-30
+    // effects sample that texture, and only the post-stage (FX) camera draws layer 30, so the
+    // gate output is used exactly when the FX layer redraws. Cameras disabled at setup stay off.
+    private static Camera[] FindGateCameras()
+    {
+        if (!MonoMod.RenderLayersConfig.ScheduleGateCamera)
+            return null;
+        var engine = SingletonMonoBehaviour<GameEngine>.instance;
+        var stage = engine != null ? engine.battleStage : null;
+        if (stage == null)
+            return null;
+        var found = new List<Camera>();
+        foreach (var camera in stage.GetComponentsInChildren<Camera>(true))
+        {
+            if (camera.enabled && camera.targetTexture != null &&
+                camera.cullingMask == 1 << MU3.Sys.Const.Layer_FX_Gate)
+                found.Add(camera);
+        }
+        return found.ToArray();
+    }
+
+    private void SetGateCameras(bool enabled)
+    {
+        if (_gateCameras == null)
+            return;
+        foreach (var camera in _gateCameras)
+        {
+            if (camera != null)
+                camera.enabled = enabled;
+        }
     }
 
     // Called on the owning BattleCamera, never on a process-global compositor.
@@ -106,15 +150,41 @@ public class BattleCameraPatch : BattleCamera
         lostTarget |= RestoreLayerTarget(_stageRenderTexutre);
         lostTarget |= RestoreLayerTarget(_postStageRenderTexture);
         var refreshing = Time.time < _refreshLayersUntil;
-        var force = _forceLayers || lostTarget || refreshing || _wasRefreshingLayers ||
-            getCurrentState() != EState.Play;
+        var force = _forceLayers || lostTarget || getCurrentState() != EState.Play;
+        var forceFX = false;
+        if (refreshing || _wasRefreshingLayers)
+        {
+            // Event effects draw on the FX layer. With EventFXOnly, a still camera leaves the
+            // stage and merged background at their own rates; the frames that open and close
+            // a window, and any camera motion inside it, still redraw every layer.
+            var moved = !MonoMod.RenderLayersConfig.EventFXOnly || !refreshing || LayerCamerasMoved();
+            force |= moved;
+            forceFX = !moved;
+        }
         var passes = _layerSchedule.Next(Time.time, MonoMod.RenderLayersConfig.StageFPS,
-            MonoMod.RenderLayersConfig.BGMergeFPS, MonoMod.RenderLayersConfig.FXFPS, force);
+            MonoMod.RenderLayersConfig.BGMergeFPS, MonoMod.RenderLayersConfig.FXFPS, force, forceFX);
         _scheduledStageCamera.enabled = (passes & RenderLayerSchedule.Stage) != 0;
         _stageMergeCamera.enabled = (passes & RenderLayerSchedule.Merge) != 0;
         _postStageCamera.enabled = (passes & RenderLayerSchedule.FX) != 0;
+        SetGateCameras((passes & RenderLayerSchedule.FX) != 0);
         _forceLayers = false;
         _wasRefreshingLayers = refreshing;
+    }
+
+    // True when the main or stage camera's view or projection differs from the previous call.
+    private bool LayerCamerasMoved()
+    {
+        var mainView = _mainCamera.worldToCameraMatrix;
+        var mainProjection = _mainCamera.projectionMatrix;
+        var stageView = _scheduledStageCamera.worldToCameraMatrix;
+        var stageProjection = _scheduledStageCamera.projectionMatrix;
+        var moved = mainView != _lastMainView || mainProjection != _lastMainProjection ||
+            stageView != _lastStageView || stageProjection != _lastStageProjection;
+        _lastMainView = mainView;
+        _lastMainProjection = mainProjection;
+        _lastStageView = stageView;
+        _lastStageProjection = stageProjection;
+        return moved;
     }
 
     private static bool RestoreLayerTarget(RenderTexture target)
@@ -133,6 +203,7 @@ public class BattleCameraPatch : BattleCamera
             _stageMergeCamera.enabled = true;
         if (_postStageCamera != null)
             _postStageCamera.enabled = true;
+        SetGateCameras(true);
     }
 
     private static void DetachLayerCamera(Camera camera)
@@ -151,6 +222,7 @@ public class BattleCameraPatch : BattleCamera
         _scheduledStageCamera = null;
         orig_destroyStageCamera();
         RestoreLayerCameras();
+        _gateCameras = null;
         _forceLayers = true;
     }
 
@@ -168,6 +240,8 @@ public class BattleCameraPatch : BattleCamera
         DetachLayerCamera(_stageMergeCamera);
         DetachLayerCamera(_postStageCamera);
         orig_OnDestroy();
+        SetGateCameras(true);
+        _gateCameras = null;
         ReleaseLayerTarget(ref _preStageRenderTexture);
         ReleaseLayerTarget(ref _stageRenderTexutre);
         ReleaseLayerTarget(ref _postStageRenderTexture);
