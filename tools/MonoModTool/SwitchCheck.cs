@@ -5,6 +5,8 @@ using Mono.Cecil.Cil;
 static class SwitchCheck
 {
     const string AnyPatchEnabled = "AnyPatchEnabled";
+    static readonly TimeSpan ChildTimeout = TimeSpan.FromMinutes(3);
+    const int ChildAttempts = 2;
 
     sealed record Switch(string Name, HashSet<string> Targets, bool ModuleWide);
 
@@ -187,11 +189,21 @@ static class SwitchCheck
         if (configPath != null)
             start.Environment["MU3_CONFIG_PATH"] = configPath;
 
-        using var process = Process.Start(start)!;
-        var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
-        File.WriteAllText(logPath, stdout.Result + stderr.Result);
-        return process.ExitCode == 0;
+        for (var attempt = 1; ; attempt++)
+        {
+            using var process = Process.Start(start)!;
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            if (process.WaitForExit(ChildTimeout))
+            {
+                File.WriteAllText(logPath, stdout.Result + stderr.Result);
+                return process.ExitCode == 0;
+            }
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            File.WriteAllText(logPath, stdout.Result + stderr.Result + $"\nattempt {attempt} killed after {ChildTimeout.TotalSeconds:0} s\n");
+            if (attempt == ChildAttempts)
+                return false;
+        }
     }
 }
