@@ -31,35 +31,6 @@ public class BattleCameraPatch : BattleCamera
     private Matrix4x4 _lastStageView;
     private Matrix4x4 _lastStageProjection;
 
-    private RenderTexture _stageAsset;
-    private RenderTexture _postStageAsset;
-
-    private extern void orig_Awake();
-
-    private new void Awake()
-    {
-
-        // These fields are shared asset references. Give each battle its own
-        // outputs before the original code binds them to cameras and billboards.
-        // but the originals also need to be kept around as a couple of the shaders 
-        // use the original texture, causing the wave transition to break
-
-        _stageAsset = _stageRenderTexutre;
-        _postStageAsset = _postStageRenderTexture;
-        _stageRenderTexutre = CreateLayerTarget(_stageRenderTexutre);
-        _postStageRenderTexture = CreateLayerTarget(_postStageRenderTexture);
-        orig_Awake();
-    }
-
-    private static RenderTexture CreateLayerTarget(RenderTexture asset)
-    {
-        var target = asset != null ? Instantiate(asset)
-            : new RenderTexture(1080, 1920, 24, RenderTextureFormat.ARGB32);
-        target.hideFlags = HideFlags.DontSave;
-        InitializeLayerTarget(target);
-        return target;
-    }
-
     private static void InitializeLayerTarget(RenderTexture target)
     {
         target.Create();
@@ -246,25 +217,16 @@ public class BattleCameraPatch : BattleCamera
     private void OnDestroy()
     {
         DetachLayerCamera(_scheduledStageCamera);
-        DetachLayerCamera(_stageMergeCamera);
-        DetachLayerCamera(_postStageCamera);
         orig_OnDestroy();
         SetGateCameras(true);
         _gateCameras = null;
-        ReleaseLayerTarget(ref _preStageRenderTexture);
-        ReleaseLayerTarget(ref _stageRenderTexutre);
-        ReleaseLayerTarget(ref _postStageRenderTexture);
-    }
-
-    private static void ReleaseLayerTarget(ref RenderTexture target)
-    {
-        if (target == null)
+        if (_preStageRenderTexture == null)
             return;
-        if (RenderTexture.active == target)
+        if (RenderTexture.active == _preStageRenderTexture)
             RenderTexture.active = null;
-        target.Release();
-        Destroy(target);
-        target = null;
+        _preStageRenderTexture.Release();
+        Destroy(_preStageRenderTexture);
+        _preStageRenderTexture = null;
     }
 
     public extern void orig_Leave_StartCutscene();
@@ -284,30 +246,6 @@ public class BattleCameraPatch : BattleCamera
         {
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-        }
-    }
-
-    public void RebindEffectTextures(GameObject root)
-    {
-        // Awake hasn't captured the original assets yet, so there is nothing to match against.
-        if (_stageAsset == null && _postStageAsset == null) return;
-
-        foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-        {
-            foreach (var m in r.materials)
-            {
-                if (!m.HasProperty("_RenderTexture")) continue;
-                var tex = m.GetTexture("_RenderTexture") as RenderTexture;
-                
-                if (tex == _stageAsset)
-                {
-                    m.SetTexture("_RenderTexture", _stageRenderTexutre);
-                }
-                else if (tex == _postStageAsset)
-                {
-                    m.SetTexture("_RenderTexture", _postStageRenderTexture);
-                }
-            }
         }
     }
 }
