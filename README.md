@@ -27,7 +27,7 @@ When at least one patch is enabled, the game log shows `[Steroid] loaded.` short
 
 ## Configuration
 
-Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). A switch you leave out uses its default: `NoUICameraDuringPlay` and `PrimitiveMeshEmission` are off by default, and everything else is on. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
+Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). A switch you leave out uses its default: `NoUICameraDuringPlay` is off by default, and everything else is on. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
 
 ```ini
 [Optimization]
@@ -40,7 +40,7 @@ GpuTextScroll=1
 LoginRequestsBatching=1
 AsyncLoginRequests=1
 NoteBatching=1
-PrimitiveMeshEmission=0
+PrimitiveMeshEmission=1
 GameplayPrewarm=1
 UVAnimation=1
 CollabSocketCaching=1
@@ -161,9 +161,7 @@ Notes with different shaders, meshes, or drawing order still need separate group
 
 ### `PrimitiveMeshEmission`
 
-The game rebuilds the lane and hold-note meshes every frame by adding points one at a time. This patch collects the drawing commands for a frame and writes the whole mesh at once through a native helper bundled with the mod. If the helper can't be used, it writes the mesh directly from managed code, and if that isn't possible either, it keeps the game's original method.
-
-It is off by default because testing didn't show a meaningful difference. Leave it off unless it clearly helps on your setup.
+The game rebuilds the lane and hold-note meshes every frame by adding points one at a time, and then wipes its point lists. This patch collects the drawing commands for a frame and writes the whole mesh at once through a native helper bundled with the mod, and empties the lists without wiping memory that the next frame overwrites anyway. If the helper can't be used, it writes the mesh directly from managed code, and if that isn't possible either, it keeps the game's original method.
 
 ### `GameplayPrewarm`
 

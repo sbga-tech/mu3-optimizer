@@ -30,7 +30,7 @@ namespace MonoMod
         [IniField("Optimization", "NoteBatching", 1)]
         public static bool NoteBatching;
 
-        [IniField("Optimization", "PrimitiveMeshEmission", 0)]
+        [IniField("Optimization", "PrimitiveMeshEmission", 1)]
         public static bool PrimitiveMeshEmission;
 
         [IniField("Optimization", "GameplayPrewarm", 1)]

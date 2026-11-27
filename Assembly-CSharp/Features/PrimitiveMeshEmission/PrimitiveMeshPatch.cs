@@ -421,10 +421,20 @@ public class PrimitiveMeshPatch : PrimitiveMesh
 
         var rebind = _listFallback;
         _stripVertexCount = -1;
-        _vertices.Clear();
-        _colors.Clear();
-        _uv.Clear();
-        _triangles.Clear();
+        if (_fastBound)
+        {
+            ListInternals<Vector3>.SetSize(_vertices, 0);
+            ListInternals<Color>.SetSize(_colors, 0);
+            ListInternals<Vector2>.SetSize(_uv, 0);
+            ListInternals<int>.SetSize(_triangles, 0);
+        }
+        else
+        {
+            _vertices.Clear();
+            _colors.Clear();
+            _uv.Clear();
+            _triangles.Clear();
+        }
         resetFastFrame();
         if (rebind)
             bindFast();
