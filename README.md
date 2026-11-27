@@ -80,7 +80,6 @@ EventFXOnly=0
 [Optimization.SwingJointPhysics]
 ; Most physics updates per second. 0 or below updates every rendered frame.
 SwingJointFPS=60
-SwingJointNative=0
 
 [Optimization.UnityPlayerHooks]
 GpuFenceWait=1
@@ -118,8 +117,6 @@ Rates below your frame rate can make animated backgrounds look less smooth, and 
 ### `SwingJointPhysics`
 
 Hair, costumes, and accessories sway using physics that runs once per rendered frame and doesn't account for frame time. On a display faster than the cabinet's 60 FPS, the sway moves too fast, and the game does more physics work than it needs to. This patch runs the physics at most `SwingJointFPS` times a second (60 by default), which brings back the intended motion and saves the extra work. It also skips joints on hidden objects and does less repeated work per joint.
-
-`SwingJointNative=1` moves the physics into a native helper bundled with the mod. The helper is only used after a live check confirms that it reads and moves the game's objects exactly like the normal code. If that check or a later update fails, the patch keeps using the normal physics code.
 
 ### `InactiveMirrorIndicator`
 

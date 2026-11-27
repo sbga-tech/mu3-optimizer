@@ -5,7 +5,7 @@ namespace MU3.Mod.SwingJointPhysics;
 
 [MonoModIfFlag(nameof(PatchConfig.SwingJointPhysics))]
 [MonoModPatch("global::MU3.SwingJoint")]
-public partial class SwingJointPatch : SwingJoint
+public class SwingJointPatch : SwingJoint
 {
     [MonoModIgnore] private Transform _childNode;
     [MonoModIgnore] private Vector3 _nodeAxis;

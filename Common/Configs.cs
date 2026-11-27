@@ -95,10 +95,6 @@ namespace MonoMod
         // 0 or negative runs costume physics every rendered frame.
         [IniField("Optimization.SwingJointPhysics", "SwingJointFPS", 60)]
         public static float SwingJointFPS;
-
-        // Uses the embedded native solver only after a bit-exact live transform audit.
-        [IniField("Optimization.SwingJointPhysics", "SwingJointNative", 0)]
-        public static bool SwingJointNative;
     }
 
     [IniConfig]
