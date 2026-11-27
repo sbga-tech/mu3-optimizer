@@ -157,7 +157,9 @@ fn waitFence(r: *Runtime, scope: *TlsScope, value: u64) WaitOut {
     r.event_armed.store(true, .release);
     com.flush(r.context.load(.acquire));
     scope.waiting = true;
+    const wait_start = w32.qpc();
     const outcome = alertableDeadline(r.qpc_freq, event, FENCE_WAIT_MS);
+    _ = r.waited_ticks.fetchAdd(w32.qpc() -| wait_start, .monotonic);
     scope.waiting = false;
     switch (outcome) {
         .signaled => {

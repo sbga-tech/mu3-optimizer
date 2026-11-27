@@ -88,6 +88,9 @@ JobSignalBatching=1
 GraphicsJobs=1
 ; Turns on Unity's GPU skinning for characters after startup; off by default.
 GpuSkinning=0
+; Lets the CPU start the next frame while the GPU finishes the last one, only
+; while that adds no delay; needs GpuFenceWait. Off by default.
+AdaptiveFrameQueue=0
 ```
 
 ## Rendering and UI patches
@@ -229,6 +232,14 @@ Characters bend their meshes to follow their skeletons every frame. The game shi
 Unity checks the setting every time it prepares a character mesh, so the change takes effect from the first battle. Meshes with active blend shapes, and graphics cards without the Direct3D 11 feature it needs, keep CPU skinning. In testing, characters, costumes, hair, and weapons looked the same, and scores were identical.
 
 It is off by default.
+
+### `AdaptiveFrameQueue`
+
+The game tells Unity to finish every frame on the GPU before it starts preparing the next one. On a fast PC the GPU finishes its work early and then waits for the next frame, while the CPU waits for the GPU. With this setting Unity may prepare one frame ahead, so the two overlap and frames come out faster.
+
+A frame prepared ahead only adds delay when the GPU can't keep up and frames pile up waiting for it. The setting watches how long Unity waits for the GPU. When the wait grows, it goes back to the game's behavior, and tries again a little later. With VSync on, it always keeps the game's behavior.
+
+It needs `GpuFenceWait`. It is off by default.
 
 ## Building
 

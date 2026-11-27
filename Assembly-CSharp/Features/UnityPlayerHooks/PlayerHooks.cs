@@ -33,6 +33,7 @@ internal static class PlayerHooks
         GpuHookFailed = 0x00010006,
         GpuTlsAllocationFailed = 0x00010007,
         GpuShutdownFailed = 0x00010008,
+        GpuInactive = 0x00010009,
         JobUnsupported = 0x00020001,
         JobAlreadyAttempted = 0x00020002,
         JobInvalidPlayerImage = 0x00020003,
@@ -62,11 +63,15 @@ internal static class PlayerHooks
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate PlayerStatus ShutdownDelegate();
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate PlayerStatus WaitedDelegate(out ulong nanoseconds);
+
     private static readonly object Sync = new object();
     private static bool _started;
     private static bool _gpuInitialized;
     private static bool _finished;
     private static ShutdownDelegate _shutdown;
+    private static WaitedDelegate _waited;
     private static Host _host;
 
     [OnStateEnter(nameof(ApplicationMU3.EState.WaitAMDaemonReady))]
@@ -103,7 +108,11 @@ internal static class PlayerHooks
         var module = ModulesRegistry.LoadLibrary("mu3player.dll");
         var init = module.GetFunction<InitDelegate>("mu3_player_init");
         if ((flags & HookFlags.GpuWait) != HookFlags.None)
+        {
             _shutdown = module.GetFunction<ShutdownDelegate>("mu3_player_shutdown");
+            if (MonoMod.UnityPlayerHooksConfig.AdaptiveFrameQueue)
+                _waited = module.GetFunction<WaitedDelegate>("mu3_gpu_wait_ns");
+        }
 
         if ((flags & HookFlags.JobSignal) != HookFlags.None)
             ReportJobSignal(init(HookFlags.JobSignal));
@@ -148,6 +157,8 @@ internal static class PlayerHooks
 
         _gpuInitialized = true;
         AttachHost(hostObject);
+        if (_waited != null)
+            _host.queue = new FrameQueue(QualitySettings.maxQueuedFrames);
     }
 
     private static void AttachHost(GameObject hostObject)
@@ -191,7 +202,95 @@ internal static class PlayerHooks
 
     private sealed class Host : MonoBehaviour
     {
+        internal FrameQueue queue;
+
+        private void Update()
+        {
+            if (queue != null && !queue.Tick())
+                queue = null;
+        }
+
         private void OnApplicationQuit() { Finish("quit"); }
         private void OnDestroy() { Finish("destroy"); }
+    }
+
+    private sealed class FrameQueue
+    {
+        private const float WindowSeconds = 0.5f;
+        private const double MaxWaitShare = 0.2;
+        private const float FirstRetrySeconds = 10f;
+        private const float LongestRetrySeconds = 80f;
+        private const float SettledSeconds = 60f;
+
+        private readonly int _original;
+        private float _windowStart;
+        private ulong _windowWaited;
+        private float _queuedSince;
+        private float _retryAt;
+        private float _retryDelay = FirstRetrySeconds;
+
+        internal FrameQueue(int original)
+        {
+            _original = original;
+        }
+
+        internal bool Tick()
+        {
+            var now = Time.realtimeSinceStartup;
+            if (_waited(out var waited) != PlayerStatus.Success)
+            {
+                Apply(_original, "the GPU fence wait is no longer active");
+                return false;
+            }
+
+            if (QualitySettings.vSyncCount > 0)
+            {
+                Apply(_original, "VSync is on");
+                _retryAt = now;
+                return true;
+            }
+
+            if (QualitySettings.maxQueuedFrames != 1)
+            {
+                if (now < _retryAt)
+                    return true;
+                Apply(1, "trying a queued frame");
+                _queuedSince = now;
+                Restart(now, waited);
+                return true;
+            }
+
+            var elapsed = now - _windowStart;
+            if (elapsed < WindowSeconds)
+                return true;
+            var share = (waited - _windowWaited) / (elapsed * 1e9);
+            if (share > MaxWaitShare)
+            {
+                Apply(_original, "the render thread waited " + (share * 100).ToString("F0")
+                    + "% of the time for the GPU");
+                _retryAt = now + _retryDelay;
+                _retryDelay = Math.Min(_retryDelay * 2f, LongestRetrySeconds);
+            }
+            else if (now - _queuedSince >= SettledSeconds)
+            {
+                _retryDelay = FirstRetrySeconds;
+            }
+            Restart(now, waited);
+            return true;
+        }
+
+        private void Restart(float now, ulong waited)
+        {
+            _windowStart = now;
+            _windowWaited = waited;
+        }
+
+        private static void Apply(int frames, string reason)
+        {
+            if (QualitySettings.maxQueuedFrames == frames)
+                return;
+            QualitySettings.maxQueuedFrames = frames;
+            Debug.Log(LogPrefix + "AdaptiveFrameQueue: " + frames + " queued frame(s); " + reason + ".");
+        }
     }
 }

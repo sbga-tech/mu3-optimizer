@@ -64,6 +64,14 @@ fn closeHandle(h: *?*anyopaque) void {
     h.* = null;
 }
 
+pub fn waited(nanoseconds: *u64) i32 {
+    const r = rt() orelse return errors.ERR_INACTIVE;
+    if (!r.fence_wait.load(.acquire) or r.qpc_freq == 0) return errors.ERR_INACTIVE;
+    const ticks: u128 = r.waited_ticks.load(.monotonic);
+    nanoseconds.* = @intCast(ticks * 1_000_000_000 / r.qpc_freq);
+    return ERR_OK;
+}
+
 pub fn init() i32 {
     if (builtin.os.tag != .windows) return ERR_UNSUPPORTED;
     if (rt() != null) return ERR_ALREADY;

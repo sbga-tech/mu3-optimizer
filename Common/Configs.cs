@@ -111,5 +111,8 @@ namespace MonoMod
 
         [IniField("Optimization.UnityPlayerHooks", "GpuSkinning", 0)]
         public static bool GpuSkinning;
+
+        [IniField("Optimization.UnityPlayerHooks", "AdaptiveFrameQueue", 0)]
+        public static bool AdaptiveFrameQueue;
     }
 }

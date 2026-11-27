@@ -29,3 +29,7 @@ pub export fn mu3_player_init(feature: u32) i32 {
 export fn mu3_player_shutdown() i32 {
     return gpu_wait.shutdown();
 }
+
+export fn mu3_gpu_wait_ns(nanoseconds: *u64) i32 {
+    return gpu_wait.waited(nanoseconds);
+}
