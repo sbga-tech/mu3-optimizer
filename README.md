@@ -27,11 +27,11 @@ When at least one patch is enabled, the game log shows `[Steroid] loaded.` short
 
 ## Configuration
 
-Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). A switch you leave out uses its default: `NoImageBloom`, `NoUICameraDuringPlay`, and `PrimitiveMeshEmission` are off by default, and everything else is on. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
+Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). A switch you leave out uses its default: `NoUICameraDuringPlay` and `PrimitiveMeshEmission` are off by default, and everything else is on. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
 
 ```ini
 [Optimization]
-NoImageBloom=0
+ImageBloom=1
 RenderLayers=1
 SwingJointPhysics=1
 InactiveMirrorIndicator=1
@@ -48,6 +48,12 @@ CollabHeartbeatCaching=1
 CollabMemberListCompaction=1
 InlinedAMDaemonCalls=1
 UnityPlayerHooks=1
+
+[Optimization.ImageBloom]
+; Most glow redraws per second; must be above 0.
+BloomFPS=60
+; Removes the glow completely; BloomFPS then has no effect.
+NoGlow=0
 
 [Optimization.RenderLayers]
 ; How often each layer redraws during normal play:
@@ -87,11 +93,15 @@ GpuSkinning=0
 
 ## Rendering and UI patches
 
-### `NoImageBloom`
+### `ImageBloom`
 
-Bloom, the soft glow around bright objects, takes several extra rendering passes and temporary textures every time the camera renders. This patch removes the glow and keeps the rest of the image effect the camera needs. The trade-off is visible: bright objects no longer glow.
+Bloom is the soft glow around bright objects. To make it, the game renders the battle scene a second time every frame, keeping only the bright parts, then blurs that image over several extra passes on the next frame.
 
-It is off by default because it changes how the game looks. It is most likely to help when the GPU is the bottleneck.
+With this patch the second render happens at most `BloomFPS` times a second (60 by default, the cabinet's frame rate). At 60 FPS or below nothing changes. On faster displays the glow is redrawn 60 times a second, as it is on the cabinet, while everything else still draws every frame. At the end of a battle, when the game reuses the finished frame, the scene is rendered every frame as before.
+
+`NoGlow=1` removes the glow and its passes completely and keeps the rest of the image effect the camera needs. The trade-off is visible: bright objects no longer glow. It is off by default.
+
+This switch replaces the old `NoImageBloom` setting, which no longer does anything. To keep removing the glow, use `ImageBloom=1` with `NoGlow=1`.
 
 ### `RenderLayers`
 

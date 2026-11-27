@@ -3,8 +3,8 @@ namespace MonoMod
     [IniConfig]
     public static class PatchConfig
     {
-        [IniField("Optimization", "NoImageBloom", 0)]
-        public static bool NoImageBloom;
+        [IniField("Optimization", "ImageBloom", 1)]
+        public static bool ImageBloom;
 
         [IniField("Optimization", "RenderLayers", 1)]
         public static bool RenderLayers;
@@ -53,6 +53,16 @@ namespace MonoMod
 
         [IniField("Optimization", "UnityPlayerHooks", 1)]
         public static bool UnityPlayerHooks;
+    }
+
+    [IniConfig]
+    public static class ImageBloomConfig
+    {
+        [IniField("Optimization.ImageBloom", "BloomFPS", 60)]
+        public static float BloomFPS;
+
+        [IniField("Optimization.ImageBloom", "NoGlow", 0)]
+        public static bool NoGlow;
     }
 
     [IniConfig]
