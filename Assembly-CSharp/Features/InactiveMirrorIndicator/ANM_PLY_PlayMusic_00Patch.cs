@@ -22,8 +22,10 @@ public class ANM_PLY_PlayMusic_00Patch : ANM_PLY_PlayMusic_00
             // a live Image + BaseMeshEffect in every canvas traversal. Hide
             // the indicator object instead; MU3UIImageChanger.OnEnable
             // re-applies the stored pattern when it is shown again.
-            _optionMirrorImageChanger.gameObject.SetActive(
-                value.Mirror == UserOptionValue.eMirror.ON);
+
+            // A magic number is being used here (instead of eMirror.ON) as it 
+            // is the one reference that breaks functionality in versions prior to 1.60
+            _optionMirrorImageChanger.gameObject.SetActive(_optionMirrorImageChanger.patternNumber == 1f);
         }
     }
 }
