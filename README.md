@@ -79,6 +79,10 @@ SwingJointNative=0
 [Optimization.UnityPlayerHooks]
 GpuFenceWait=1
 JobSignalBatching=1
+; Turns on Unity graphics jobs after startup, with a fix for their crash; off by default.
+GraphicsJobs=0
+; Turns on Unity's GPU skinning for characters after startup; off by default.
+GpuSkinning=0
 ```
 
 ## Rendering and UI patches
@@ -187,9 +191,9 @@ Every call the game makes into AMDaemon goes through a small wrapper that create
 
 ## Unity player patches
 
-`UnityPlayerHooks` patches two places inside Unity's own engine code, which a normal MonoMod patch can't reach. The hooks come from a native library embedded in the mod and are installed right after the game starts. Set `UnityPlayerHooks=0` to turn both off, or turn each one off separately under `[Optimization.UnityPlayerHooks]`.
+`UnityPlayerHooks` patches places inside Unity's own engine code, which a normal MonoMod patch can't reach. The hooks come from a native library embedded in the mod and are installed right after the game starts. Set `UnityPlayerHooks=0` to turn them all off, or turn each one off separately under `[Optimization.UnityPlayerHooks]`.
 
-The hooks find their targets by scanning for known code patterns, so they support both the regular and the development build of the Unity 5.6.4f1 x64 player. If a hook can't find its target exactly, it is skipped with a warning in the log and Unity's original code runs.
+The hooks find their targets by scanning for known code patterns. `GpuFenceWait` and `JobSignalBatching` support both the regular and the development build of the Unity 5.6.4f1 x64 player; `GraphicsJobs` and `GpuSkinning` recognise only the regular build. If a hook can't find its target exactly, it is skipped with a warning in the log and Unity's original code runs.
 
 ### `GpuFenceWait`
 
@@ -202,6 +206,26 @@ In testing, the fence wait performed the same as waiting with a precise timer, a
 Unity wakes its worker threads when there is work for them. That code has a counting bug: when many workers are waiting, handing out a little work can wake all of them at once. This hook fixes the check so only as many workers wake as there is work for, and wakes several workers with one system call instead of one call each. The number of workers and the way jobs are handed out don't change.
 
 If a combined wake-up fails, the hook falls back to waking the workers one at a time. It stays installed until the game exits, because Unity can still wake workers while it shuts down.
+
+### `GraphicsJobs`
+
+Graphics jobs build each camera pass's draw commands on worker threads instead of the main thread, and the render thread plays them back in the order they were scheduled. This turns them on without the `-force-gfx-jobs` launch option.
+
+Unity only reads the launch option while it starts up, before the mod runs. So the hook instead changes the two engine flags that decide, every frame, whether camera passes are built by worker threads. It switches them at the point in the frame where Unity would have finished the previous frame's graphics jobs, so no frame is left half in one mode. The frames before the mod starts, during boot, render without graphics jobs. Once on, graphics jobs stay on until the game exits.
+
+It also fixes a crash that Unity's graphics jobs have on their own. Whichever job finishes last deletes UI buffers that are no longer needed, and records those deletes in its own command list. When that job was scheduled earlier than another job that still draws the same buffers, the deletes are played back first and the later draws use freed memory. The game sometimes crashes when that happens. The hook moves those deletes to the main thread, which performs them after Unity has finished the previous frame's graphics jobs, so every draw that uses the buffers has already been queued. Graphics jobs are only switched on once this fix is installed; if it can't be, they stay off.
+
+If you already start the game with `-force-gfx-jobs`, set `GraphicsJobs=1` to get the crash fix.
+
+It is off by default.
+
+### `GpuSkinning`
+
+Characters bend their meshes to follow their skeletons every frame. The game ships with Unity's GPU skinning turned off, so worker threads do this on the CPU and upload the results. This turns GPU skinning on right after startup, so the graphics card does the bending instead.
+
+Unity checks the setting every time it prepares a character mesh, so the change takes effect from the first battle. Meshes with active blend shapes, and graphics cards without the Direct3D 11 feature it needs, keep CPU skinning. In testing, characters, costumes, hair, and weapons looked the same, and scores were identical.
+
+It is off by default.
 
 ## Building
 

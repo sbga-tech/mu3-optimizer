@@ -16,7 +16,8 @@ internal static class PlayerHooks
         None = 0,
         GpuWait = 1,
         JobSignal = 2,
-        GraphicsJobs = 4
+        GraphicsJobs = 4,
+        GpuSkinning = 8
     }
 
     // Match the encoded i32 statuses in Native/mu3player/src/status.zig:
@@ -45,6 +46,11 @@ internal static class PlayerHooks
         GraphicsJobsMinHookFailed = 0x00030005,
         GraphicsJobsHookFailed = 0x00030006,
         GraphicsJobsDeviceUnavailable = 0x00030007,
+        GpuSkinningUnsupported = 0x00040001,
+        GpuSkinningAlreadyAttempted = 0x00040002,
+        GpuSkinningInvalidPlayerImage = 0x00040003,
+        GpuSkinningTargetResolutionFailed = 0x00040004,
+        GpuSkinningSettingsUnavailable = 0x00040005,
         InvalidFeature = 0x00000001
     }
 
@@ -69,7 +75,8 @@ internal static class PlayerHooks
     {
         var flags = (MonoMod.UnityPlayerHooksConfig.GpuFenceWait ? HookFlags.GpuWait : HookFlags.None)
             | (MonoMod.UnityPlayerHooksConfig.JobSignalBatching ? HookFlags.JobSignal : HookFlags.None)
-            | (MonoMod.UnityPlayerHooksConfig.GraphicsJobs ? HookFlags.GraphicsJobs : HookFlags.None);
+            | (MonoMod.UnityPlayerHooksConfig.GraphicsJobs ? HookFlags.GraphicsJobs : HookFlags.None)
+            | (MonoMod.UnityPlayerHooksConfig.GpuSkinning ? HookFlags.GpuSkinning : HookFlags.None);
         if (flags == HookFlags.None)
             return;
         lock (Sync)
@@ -103,6 +110,8 @@ internal static class PlayerHooks
         // Must run on the main thread: native init records its device as the one whose deletes stay immediate.
         if ((flags & HookFlags.GraphicsJobs) != HookFlags.None)
             ReportGraphicsJobs(init(HookFlags.GraphicsJobs));
+        if ((flags & HookFlags.GpuSkinning) != HookFlags.None)
+            ReportGpuSkinning(init(HookFlags.GpuSkinning));
         if ((flags & HookFlags.GpuWait) != HookFlags.None)
             StartGpuWait(init(HookFlags.GpuWait), hostObject);
     }
@@ -119,6 +128,13 @@ internal static class PlayerHooks
         if (status != PlayerStatus.Success)
             Debug.LogWarning(LogPrefix + "GraphicsJobs native init returned " + status
                 + " (0x" + ((int)status).ToString("X8") + "); graphics jobs not switched on.");
+    }
+
+    private static void ReportGpuSkinning(PlayerStatus status)
+    {
+        if (status != PlayerStatus.Success)
+            Debug.LogWarning(LogPrefix + "GpuSkinning native init returned " + status
+                + " (0x" + ((int)status).ToString("X8") + "); CPU skinning kept.");
     }
 
     private static void StartGpuWait(PlayerStatus status, GameObject hostObject)

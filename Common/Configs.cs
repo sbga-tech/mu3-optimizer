@@ -102,5 +102,8 @@ namespace MonoMod
 
         [IniField("Optimization.UnityPlayerHooks", "GraphicsJobs", 0)]
         public static bool GraphicsJobs;
+
+        [IniField("Optimization.UnityPlayerHooks", "GpuSkinning", 0)]
+        public static bool GpuSkinning;
     }
 }

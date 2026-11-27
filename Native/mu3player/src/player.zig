@@ -52,6 +52,14 @@ pub const settings_graphics_jobs_offset: usize = 0x26B;
 /// `ShaderPassContext::isUsingJobifiedRendering`, copied once from `graphicsJobs` at startup.
 pub const pass_context_jobified_offset: usize = 0xC1;
 
+pub const GpuSkinningTargets = struct {
+    /// `GetPlayerSettingsPtr`, as called by `SkinnedMeshRenderer::DoesQualifyForGPUSkinning`.
+    settings_getter: u32,
+};
+
+/// `PlayerSettings::gpuSkinning`, read only by `DoesQualifyForGPUSkinning` at each skin preparation.
+pub const settings_gpu_skinning_offset: usize = 0x26A;
+
 /// A wildcard covers a documented relative-address operand, never an opcode.
 const Pattern = struct {
     bytes: []const u8,
@@ -362,6 +370,18 @@ const should_jobs_sync = pattern("48 83 EC 28 E8 ?? ?? ?? ?? 33 C9 38 88 6B 02 0
 const num_graphics_jobs = pattern(
     "48 83 EC 28 48 8B 05 ?? ?? ?? ?? 80 B8 C1 00 00 00 00 74 0C E8 ?? ?? ?? ?? 48 98 48 83 C4 28 C3",
 );
+// `SkinnedMeshRenderer::DoesQualifyForGPUSkinning`: no active blend shapes, a mesh, then
+// `PlayerSettings.gpuSkinning` (+0x26A) and the device capability (+0x291).
+const gpu_skinning_qualifier = pattern(
+    "48 83 EC 28 " ++
+        "48 83 B9 98 02 00 00 00 75 2D " ++
+        "48 83 B9 A0 02 00 00 00 74 23 " ++
+        "E8 ?? ?? ?? ?? " ++ // call GetPlayerSettingsPtr
+        "80 B8 6A 02 00 00 00 74 15 " ++
+        "E8 ?? ?? ?? ?? " ++ // call GetGraphicsCaps
+        "80 B8 91 02 00 00 00 74 07 " ++
+        "B0 01 48 83 C4 28 C3",
+);
 
 const RelativeOperand = struct { displacement: usize, instruction_end: usize };
 const pop_context_operand: RelativeOperand = .{ .displacement = 0x24, .instruction_end = 0x28 };
@@ -379,6 +399,7 @@ const settings_getter_jump: RelativeOperand = .{ .displacement = 3, .instruction
 const game_manager_array_operand: RelativeOperand = .{ .displacement = 6, .instruction_end = 10 };
 const should_jobs_sync_call: RelativeOperand = .{ .displacement = 5, .instruction_end = 9 };
 const num_graphics_jobs_slot: RelativeOperand = .{ .displacement = 7, .instruction_end = 11 };
+const qualifier_settings_call: RelativeOperand = .{ .displacement = 0x19, .instruction_end = 0x1D };
 
 const Headers = struct {
     image_size: u32,
@@ -570,13 +591,7 @@ pub const Image = struct {
         if (try self.relativeTarget(code, initializer, pass_context_load_operand) != slot or !self.pointerSlot(slot))
             return error.MissingPattern;
         const settings = try self.relativeTarget(code, initializer, pass_context_getter_call);
-        const settings_code = try self.codeAt(settings, settings_getter.bytes.len);
-        if (!settings_getter.matches(settings_code)) return error.MissingPattern;
-        const lookup = try self.relativeTarget(settings_code, settings, settings_getter_jump);
-        const lookup_code = try self.codeAt(lookup, game_manager_lookup.bytes.len);
-        if (!game_manager_lookup.matches(lookup_code)) return error.MissingPattern;
-        if (!self.pointerSlot(try self.relativeTarget(lookup_code, lookup, game_manager_array_operand)))
-            return error.MissingPattern;
+        try self.settingsGetter(settings);
         _ = try self.findReferencing(should_jobs_sync, .{ .operand = should_jobs_sync_call, .target = settings });
         _ = try self.findReferencing(num_graphics_jobs, .{ .operand = num_graphics_jobs_slot, .target = slot });
         return .{
@@ -586,6 +601,27 @@ pub const Image = struct {
             .settings_getter = settings,
             .pass_context_slot = slot,
         };
+    }
+
+    /// The only reader of the setting names both the getter and the byte; the getter must be
+    /// the game-manager lookup that the graphics-jobs resolution also requires.
+    pub fn resolveGpuSkinning(self: Image) Error!GpuSkinningTargets {
+        const qualifier = try self.find(gpu_skinning_qualifier);
+        const code = try self.codeAt(qualifier, gpu_skinning_qualifier.bytes.len);
+        const settings = try self.relativeTarget(code, qualifier, qualifier_settings_call);
+        try self.settingsGetter(settings);
+        return .{ .settings_getter = settings };
+    }
+
+    /// `GetPlayerSettingsPtr` tail-calls `GetGameManagerIfExists(0)`, which indexes a data array.
+    fn settingsGetter(self: Image, getter: u32) Error!void {
+        const getter_code = try self.codeAt(getter, settings_getter.bytes.len);
+        if (!settings_getter.matches(getter_code)) return error.MissingPattern;
+        const lookup = try self.relativeTarget(getter_code, getter, settings_getter_jump);
+        const lookup_code = try self.codeAt(lookup, game_manager_lookup.bytes.len);
+        if (!game_manager_lookup.matches(lookup_code)) return error.MissingPattern;
+        if (!self.pointerSlot(try self.relativeTarget(lookup_code, lookup, game_manager_array_operand)))
+            return error.MissingPattern;
     }
 
     /// Only resolved RVAs from this mapped image may be converted to addresses.
