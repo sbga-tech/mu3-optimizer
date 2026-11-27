@@ -11,14 +11,12 @@ namespace MU3.Mod.RenderLayers;
 [MonoModPatch("global::MU3.Battle.GameEngine")]
 public class GameEnginePatch : GameEngine
 {
-    private const float Margin = 0f;
-    
     //These are durations from AnimationClips
-    private const float BattleStartDuration = 13f + Margin;
-    private const float SkipDuration = 1.0f + Margin;
-    private const float DamageDuration = 0.8f + Margin;
-    private const float OverkillDuration = 4.98f + Margin;
-    private const float WaveShiftDuration = 3.17f + Margin;
+    private const float BattleStartDuration = 13f;
+    private const float SkipDuration = 1.0f;
+    private const float DamageDuration = 0.8f;
+    private const float OverkillDuration = 4.98f;
+    private const float WaveShiftDuration = 3.17f;
 
     public extern void orig_startStartCutscene(bool disableSound);
 
@@ -32,7 +30,7 @@ public class GameEnginePatch : GameEngine
 
     public new void skipStartCutscene()
     {
-        ((BattleCameraPatch)(object)battleCamera).RequestLayerRefresh(SkipDuration);
+        ((BattleCameraPatch)(object)battleCamera).CutLayerRefresh(SkipDuration);
         orig_skipStartCutscene();
     }
 

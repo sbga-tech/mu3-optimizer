@@ -19,8 +19,8 @@ public class BattleCameraPatch : BattleCamera
 
     private Camera _scheduledStageCamera;
     private RenderLayerSchedule _layerSchedule;
-    private bool _forceLayers = true;
-    private float _refreshLayersUntil = float.NegativeInfinity;
+    private bool _forceLayers;
+    private float _refreshLayersUntil;
     private bool _wasRefreshingLayers;
     // Cameras that draw the FX gate texture, which only FX-layer (post-stage) effects sample.
     // Null when there are none: MonoMod does not run patch-class field initializers.
@@ -105,11 +105,15 @@ public class BattleCameraPatch : BattleCamera
         }
     }
 
-    // Called on the owning BattleCamera, never on a process-global compositor.
     public void RequestLayerRefresh(float duration)
     {
         _refreshLayersUntil = Mathf.Max(_refreshLayersUntil, Time.time + duration);
         _forceLayers = true;
+    }
+
+    public void CutLayerRefresh(float duration)
+    {
+        _refreshLayersUntil = Mathf.Min(_refreshLayersUntil, Time.time + duration);
     }
 
     private void LateUpdate()
@@ -129,19 +133,19 @@ public class BattleCameraPatch : BattleCamera
         var lostTarget = RestoreLayerTarget(_preStageRenderTexture);
         lostTarget |= RestoreLayerTarget(_stageRenderTexutre);
         lostTarget |= RestoreLayerTarget(_postStageRenderTexture);
-        var refreshing = Time.time < _refreshLayersUntil;
-        var force = _forceLayers || lostTarget || getCurrentState() != EState.Play;
+        var now = Time.time;
+        var refreshing = now < _refreshLayersUntil;
+        var force = _forceLayers || lostTarget || getCurrentState() != EState.Play ||
+            _wasRefreshingLayers && !refreshing;
         var forceFX = false;
-        if (refreshing || _wasRefreshingLayers)
+        if (refreshing)
         {
-            // Event effects draw on the FX layer. With EventFXOnly, a still camera leaves the
-            // stage and merged background at their own rates; the frames that open and close
-            // a window, and any camera motion inside it, still redraw every layer.
-            var moved = !MonoMod.RenderLayersConfig.EventFXOnly || !refreshing || LayerCamerasMoved();
-            force |= moved;
-            forceFX = !moved;
+            if (MonoMod.RenderLayersConfig.EventFXOnly && !LayerCamerasMoved())
+                forceFX = true;
+            else
+                force = true;
         }
-        var passes = _layerSchedule.Next(Time.time, MonoMod.RenderLayersConfig.StageFPS,
+        var passes = _layerSchedule.Next(now, MonoMod.RenderLayersConfig.StageFPS,
             MonoMod.RenderLayersConfig.BGMergeFPS, MonoMod.RenderLayersConfig.FXFPS, force, forceFX);
         _scheduledStageCamera.enabled = (passes & RenderLayerSchedule.Stage) != 0;
         _stageMergeCamera.enabled = (passes & RenderLayerSchedule.Merge) != 0;
@@ -227,25 +231,5 @@ public class BattleCameraPatch : BattleCamera
         _preStageRenderTexture.Release();
         Destroy(_preStageRenderTexture);
         _preStageRenderTexture = null;
-    }
-
-    public extern void orig_Leave_StartCutscene();
-
-    private void Leave_StartCutscene()
-    {
-        orig_Leave_StartCutscene();
-        if (MonoMod.RenderLayersConfig.DisableShadows)
-            DisableShadows();
-    }
-
-    private void DisableShadows()
-    {
-        foreach (var light in FindObjectsOfType<Light>())
-            light.shadows = LightShadows.None;
-        foreach (var renderer in FindObjectsOfType<Renderer>())
-        {
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-        }
     }
 }
