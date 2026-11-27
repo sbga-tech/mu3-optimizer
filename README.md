@@ -27,7 +27,7 @@ When at least one patch is enabled, the game log shows `[Steroid] loaded.` short
 
 ## Configuration
 
-Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). A switch you leave out uses its default: `NoUICameraDuringPlay` is off by default, and everything else is on. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
+Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). Every switch is on by default. Some patches have extra settings in their own `[Optimization.<PatchName>]` section. The example below matches the defaults.
 
 ```ini
 [Optimization]
@@ -35,7 +35,7 @@ ImageBloom=1
 RenderLayers=1
 SwingJointPhysics=1
 InactiveMirrorIndicator=1
-NoUICameraDuringPlay=0
+NoUICameraDuringPlay=1
 GpuTextScroll=1
 LoginRequestsBatching=1
 AsyncLoginRequests=1
@@ -85,8 +85,8 @@ SwingJointNative=0
 [Optimization.UnityPlayerHooks]
 GpuFenceWait=1
 JobSignalBatching=1
-; Turns on Unity graphics jobs after startup, with a fix for their crash; off by default.
-GraphicsJobs=0
+; Turns on Unity graphics jobs after startup, with a fix for their crash.
+GraphicsJobs=1
 ; Turns on Unity's GPU skinning for characters after startup; off by default.
 GpuSkinning=0
 ```
@@ -129,7 +129,7 @@ With mirror mode off, the game still keeps the mirror indicator active and just 
 
 The game draws its menus and play HUD with a separate UI camera. During a song, this patch draws those canvases directly on top of the screen, so the UI camera can be switched off, and it skips the UI system's per-frame update. It stays active from the moment a song is about to start until play ends. With `GameplayPrewarm`, that includes the time the music waits for preparation to finish. When a dialog appears, the normal UI camera comes back.
 
-This patch is off by default and experimental. Unusual dialog or error sequences can make UI elements draw in the wrong order.
+Unusual dialog or error sequences can make UI elements draw in the wrong order. Set `NoUICameraDuringPlay=0` if that happens.
 
 ### `GpuTextScroll`
 
@@ -223,9 +223,7 @@ Unity only reads the launch option while it starts up, before the mod runs. So t
 
 It also fixes a crash that Unity's graphics jobs have on their own. Whichever job finishes last deletes UI buffers that are no longer needed, and records those deletes in its own command list. When that job was scheduled earlier than another job that still draws the same buffers, the deletes are played back first and the later draws use freed memory. The game sometimes crashes when that happens. The hook moves those deletes to the main thread, which performs them after Unity has finished the previous frame's graphics jobs, so every draw that uses the buffers has already been queued. Graphics jobs are only switched on once this fix is installed; if it can't be, they stay off.
 
-If you already start the game with `-force-gfx-jobs`, set `GraphicsJobs=1` to get the crash fix.
-
-It is off by default.
+If you start the game with `-force-gfx-jobs`, keep `GraphicsJobs=1`, because it carries the crash fix.
 
 ### `GpuSkinning`
 

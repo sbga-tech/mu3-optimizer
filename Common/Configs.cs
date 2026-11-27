@@ -110,7 +110,7 @@ namespace MonoMod
         [IniField("Optimization.UnityPlayerHooks", "JobSignalBatching", 1)]
         public static bool JobSignalBatching;
 
-        [IniField("Optimization.UnityPlayerHooks", "GraphicsJobs", 0)]
+        [IniField("Optimization.UnityPlayerHooks", "GraphicsJobs", 1)]
         public static bool GraphicsJobs;
 
         [IniField("Optimization.UnityPlayerHooks", "GpuSkinning", 0)]
