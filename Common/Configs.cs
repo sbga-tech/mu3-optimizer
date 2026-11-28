@@ -112,4 +112,14 @@ namespace MonoMod
         [IniField("Optimization.UnityPlayerHooks", "GpuSkinning", 0)]
         public static bool GpuSkinning;
     }
+
+    [IniConfig]
+    public static class LowLatencyConfig
+    {
+        [IniField("Optimization.LowLatency", "ReflexAntiLag", 1)]
+        public static bool ReflexAntiLag;
+
+        [IniField("Optimization.LowLatency", "FlipModel", 1)]
+        public static bool FlipModel;
+    }
 }

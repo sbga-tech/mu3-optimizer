@@ -1,4 +1,5 @@
 const low_latency = @import("low_latency.zig");
+const flip_model = @import("flip_model.zig");
 
 comptime {
     if (@sizeOf(*anyopaque) != 8) @compileError("mu3latency requires 64-bit pointers");
@@ -18,4 +19,12 @@ export fn mu3_low_latency_detail() i32 {
 
 export fn mu3_low_latency_verify(sleep_interval_us: *u32) i32 {
     return low_latency.verify(sleep_interval_us);
+}
+
+export fn mu3_flip_model_init() i32 {
+    return flip_model.init();
+}
+
+export fn mu3_flip_model_state() i32 {
+    return flip_model.state();
 }

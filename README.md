@@ -88,6 +88,10 @@ JobSignalBatching=1
 GraphicsJobs=1
 ; Turns on Unity's GPU skinning for characters after startup; off by default.
 GpuSkinning=0
+
+[Optimization.LowLatency]
+ReflexAntiLag=1
+FlipModel=1
 ```
 
 ## Rendering and UI patches
@@ -228,11 +232,21 @@ It is off by default.
 
 ## Low latency
 
-### `LowLatency`
+`LowLatency` shortens the time between the game's update and the frame reaching the screen. Its parts come from a native library embedded in the mod. Set `LowLatency=0` to turn them all off, or turn each one off separately under `[Optimization.LowLatency]`.
+
+### `ReflexAntiLag`
 
 The game makes Unity finish every frame on the graphics card before it starts the next one. This keeps input delay short, but the processor and the graphics card take turns instead of working at the same time.
 
-With this switch, the mod lets Unity prepare one frame ahead and hands the timing to the graphics driver's own low-latency feature: NVIDIA Reflex on GeForce GTX 900 series and newer, and AMD Radeon Anti-Lag 2 on Radeon RX 5000 series and newer. The driver delays the start of each frame just enough that it never waits behind the previous one, so frames come out faster without extra input delay. On other graphics cards, or when the driver doesn't offer the feature, the game's own behavior stays and the log says why.
+With this setting, the mod lets Unity prepare one frame ahead and hands the timing to the graphics driver's own low-latency feature: NVIDIA Reflex on GeForce GTX 900 series and newer, and AMD Radeon Anti-Lag 2 on Radeon RX 5000 series and newer. The driver delays the start of each frame just enough that it never waits behind the previous one, so frames come out faster without extra input delay. On other graphics cards, or when the driver doesn't offer the feature, the game's own behavior stays and the log says why.
+
+### `FlipModel`
+
+When the game runs in a window, Windows copies every finished frame into the desktop image and shows it at the screen's next refresh. With this setting, the mod moves the game to the presentation method newer games use, so Windows shows each frame directly instead. In testing on a 240 Hz screen, frames reached the screen about 4.7 ms sooner with no frame cap and about 6 ms sooner with the 60 FPS cap.
+
+With `VSync=0`, a new frame can now replace the old one partway through a screen refresh, which shows as a horizontal tear line in moving notes. With `VSync=1` there is no tearing, and the setting makes no difference.
+
+It finds Unity's swap chain by scanning for a known code pattern in the regular Unity 5.6.4f1 x64 player. If the pattern isn't found, or Windows refuses the new swap chain, the game's original presentation stays and the log says why.
 
 ## Building
 

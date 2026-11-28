@@ -59,6 +59,8 @@ internal static class LowLatency
     [MonoModIfFlag(nameof(PatchConfig.LowLatency))]
     internal static void Start(ApplicationMU3 application)
     {
+        if (!MonoMod.LowLatencyConfig.ReflexAntiLag)
+            return;
         try
         {
             var module = ModulesRegistry.LoadLibrary("mu3latency.dll");

@@ -60,6 +60,15 @@ pub const GpuSkinningTargets = struct {
 /// `PlayerSettings::gpuSkinning`, read only by `DoesQualifyForGPUSkinning` at each skin preparation.
 pub const settings_gpu_skinning_offset: usize = 0x26A;
 
+pub const SwapChainTargets = struct {
+    primary_slot: u32,
+};
+
+pub const swap_chain_offset: usize = 0x240;
+pub const swap_chain1_offset: usize = 0x248;
+pub const swap_chain2_offset: usize = 0x250;
+pub const exclusive_fullscreen_offset: usize = 0x269;
+
 /// A wildcard covers a documented relative-address operand, never an opcode.
 const Pattern = struct {
     bytes: []const u8,
@@ -383,6 +392,20 @@ const gpu_skinning_qualifier = pattern(
         "B0 01 48 83 C4 28 C3",
 );
 
+const present_frame = pattern(
+    "32 DB " ++
+        "48 8B 05 ?? ?? ?? ?? " ++
+        "48 8B 88 40 02 00 00 " ++
+        "48 85 C9 " ++
+        "74 ?? " ++
+        "45 33 C0 " ++
+        "41 8B D0 " ++
+        "84 DB " ++
+        "75 06 " ++
+        "8B 90 60 02 00 00 " ++
+        "44 39 80 60 02 00 00",
+);
+
 const RelativeOperand = struct { displacement: usize, instruction_end: usize };
 const pop_context_operand: RelativeOperand = .{ .displacement = 0x24, .instruction_end = 0x28 };
 const push_context_operand: RelativeOperand = .{ .displacement = 0x53, .instruction_end = 0x57 };
@@ -400,6 +423,7 @@ const game_manager_array_operand: RelativeOperand = .{ .displacement = 6, .instr
 const should_jobs_sync_call: RelativeOperand = .{ .displacement = 5, .instruction_end = 9 };
 const num_graphics_jobs_slot: RelativeOperand = .{ .displacement = 7, .instruction_end = 11 };
 const qualifier_settings_call: RelativeOperand = .{ .displacement = 0x19, .instruction_end = 0x1D };
+const present_swap_chain_operand: RelativeOperand = .{ .displacement = 5, .instruction_end = 9 };
 
 const Headers = struct {
     image_size: u32,
@@ -611,6 +635,13 @@ pub const Image = struct {
         const settings = try self.relativeTarget(code, qualifier, qualifier_settings_call);
         try self.settingsGetter(settings);
         return .{ .settings_getter = settings };
+    }
+
+    pub fn resolveSwapChain(self: Image) Error!SwapChainTargets {
+        const rva = try self.find(present_frame);
+        const slot = try self.relativeTarget(try self.codeAt(rva, present_frame.bytes.len), rva, present_swap_chain_operand);
+        if (!self.pointerSlot(slot)) return error.MissingPattern;
+        return .{ .primary_slot = slot };
     }
 
     /// `GetPlayerSettingsPtr` tail-calls `GetGameManagerIfExists(0)`, which indexes a data array.

@@ -13,6 +13,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     module.addImport("win32", win32);
+    const player = b.createModule(.{
+        .root_source_file = b.path("../mu3player/src/player.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    player.addImport("win32", win32);
+    module.addImport("player", player);
     module.linkSystemLibrary("kernel32", .{});
 
     const library = b.addLibrary(.{
