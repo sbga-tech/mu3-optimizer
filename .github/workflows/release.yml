@@ -1,68 +1,39 @@
 name: Release
 
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      bump:
-        description: "Version bump"
-        required: true
-        type: choice
-        options:
-          - none
-          - patch
-          - minor
-          - major
 
 jobs:
-  prepare:
+  version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Bump version
-        if: inputs.bump != 'none'
+      - name: Match tag and project versions
         run: |
-          current=$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)
-          IFS='.' read -r major minor patch <<< "$current"
-
-          case "${{ inputs.bump }}" in
-            major) major=$((major + 1)); minor=0; patch=0 ;;
-            minor) minor=$((minor + 1)); patch=0 ;;
-            patch) patch=$((patch + 1)) ;;
-          esac
-
-          new_version="$major.$minor.$patch"
-          sed -i "s|<Version>$current</Version>|<Version>$new_version</Version>|" \
-            Assembly-CSharp/Assembly-CSharp.Steroid.csproj \
-            AMDaemon.NET/AMDaemon.NET.Steroid.csproj
-
-      - name: Commit version bump
-        if: inputs.bump != 'none'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Assembly-CSharp/Assembly-CSharp.Steroid.csproj AMDaemon.NET/AMDaemon.NET.Steroid.csproj
-          git commit -m "release: v$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)"
-          git push
-
-      - name: Resolve version
-        id: version
-        run: echo "version=$(grep -oP '(?<=<Version>)[^<]+' Assembly-CSharp/Assembly-CSharp.Steroid.csproj)" >> "$GITHUB_OUTPUT"
-
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::error::Run Release on a version tag, not on $GITHUB_REF_NAME"
+            exit 1
+          fi
+          for project in Assembly-CSharp/Assembly-CSharp.Steroid.csproj AMDaemon.NET/AMDaemon.NET.Steroid.csproj; do
+            version=$(grep -oP '(?<=<Version>)[^<]+' "$project")
+            if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+              echo "::error file=$project::Version $version does not match tag $GITHUB_REF_NAME"
+              exit 1
+            fi
+          done
 
   build:
-    needs: prepare
+    needs: version
     uses: ./.github/workflows/build.yml
     secrets: inherit
 
   release:
-    needs: [prepare, build]
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -77,10 +48,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ needs.prepare.outputs.version }}" \
+          gh release create "$GITHUB_REF_NAME" \
             Assembly-CSharp.Steroid.mm.dll \
             AMDaemon.NET.Steroid.mm.dll \
-            --repo "${{ github.repository }}" \
-            --title "v${{ needs.prepare.outputs.version }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
             --generate-notes
-
