@@ -34,7 +34,6 @@ Each switch under `[Optimization]` turns one patch on (`1`) or off (`0`). Every 
 ImageBloom=1
 RenderLayers=1
 SwingJointPhysics=1
-InactiveMirrorIndicator=1
 NoUICameraDuringPlay=1
 GpuTextScroll=1
 LoginRequestsBatching=1
@@ -118,10 +117,6 @@ Rates below your frame rate can make animated backgrounds look less smooth, and 
 ### `SwingJointPhysics`
 
 Hair, costumes, and accessories sway using physics that runs once per rendered frame and doesn't account for frame time. On a display faster than the cabinet's 60 FPS, the sway moves too fast, and the game does more physics work than it needs to. This patch runs the physics at most `SwingJointFPS` times a second (60 by default), which brings back the intended motion and saves the extra work. It also skips joints on hidden objects and does less repeated work per joint.
-
-### `InactiveMirrorIndicator`
-
-With mirror mode off, the game still keeps the mirror indicator active and just shows a blank image, so the UI system keeps processing it. This patch switches the indicator off instead. Nothing on screen changes.
 
 ### `NoUICameraDuringPlay`
 

@@ -12,9 +12,6 @@ namespace MonoMod
         [IniField("Optimization", "SwingJointPhysics", 1)]
         public static bool SwingJointPhysics;
 
-        [IniField("Optimization", "InactiveMirrorIndicator", 1)]
-        public static bool InactiveMirrorIndicator;
-
         [IniField("Optimization", "NoUICameraDuringPlay", 0)]
         public static bool NoUICameraDuringPlay;
 
