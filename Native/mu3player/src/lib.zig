@@ -3,7 +3,6 @@ const gpu_wait = @import("gpu_wait/runtime.zig");
 const gpu_skinning = @import("gpu_skinning.zig");
 const graphics_jobs = @import("graphics_jobs.zig");
 const job_signal = @import("job_signal.zig");
-const low_latency = @import("low_latency.zig");
 const status = @import("status.zig");
 comptime {
     if (@sizeOf(*anyopaque) != 8) @compileError("Player hooks require 64-bit pointers");
@@ -29,20 +28,4 @@ pub export fn mu3_player_init(feature: u32) i32 {
 /// Only GPU waits need explicit teardown; the job hooks stay installed.
 export fn mu3_player_shutdown() i32 {
     return gpu_wait.shutdown();
-}
-
-export fn mu3_low_latency_init(texture: ?*anyopaque, backend: *u32) i32 {
-    return low_latency.init(texture, backend);
-}
-
-export fn mu3_low_latency_frame() i32 {
-    return low_latency.frame();
-}
-
-export fn mu3_low_latency_detail() i32 {
-    return low_latency.detail();
-}
-
-export fn mu3_low_latency_verify(sleep_interval_us: *u32) i32 {
-    return low_latency.verify(sleep_interval_us);
 }

@@ -1,25 +1,26 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const w32 = @import("win32");
-const status = @import("status.zig");
+
+const LOW_LATENCY: i32 = 0x00050000;
 
 const d3d11 = w32.graphics.direct3d11;
 const dxgi = w32.graphics.dxgi;
 const k32 = w32.kernel32;
 
 pub const ERR_OK: i32 = 0;
-pub const ERR_UNSUPPORTED: i32 = status.LOW_LATENCY | 1;
-pub const ERR_ALREADY: i32 = status.LOW_LATENCY | 2;
-pub const ERR_DEVICE: i32 = status.LOW_LATENCY | 3;
-pub const ERR_VENDOR: i32 = status.LOW_LATENCY | 4;
-pub const ERR_REFLEX_LOAD: i32 = status.LOW_LATENCY | 5;
-pub const ERR_ANTI_LAG: i32 = status.LOW_LATENCY | 6;
-pub const ERR_INACTIVE: i32 = status.LOW_LATENCY | 7;
-pub const ERR_FRAME: i32 = status.LOW_LATENCY | 8;
-pub const ERR_REFLEX_INIT: i32 = status.LOW_LATENCY | 9;
-pub const ERR_REFLEX_MODE: i32 = status.LOW_LATENCY | 10;
-pub const ERR_REFLEX_STATUS: i32 = status.LOW_LATENCY | 11;
-pub const ERR_REFLEX_OFF: i32 = status.LOW_LATENCY | 12;
+pub const ERR_UNSUPPORTED: i32 = LOW_LATENCY | 1;
+pub const ERR_ALREADY: i32 = LOW_LATENCY | 2;
+pub const ERR_DEVICE: i32 = LOW_LATENCY | 3;
+pub const ERR_VENDOR: i32 = LOW_LATENCY | 4;
+pub const ERR_REFLEX_LOAD: i32 = LOW_LATENCY | 5;
+pub const ERR_ANTI_LAG: i32 = LOW_LATENCY | 6;
+pub const ERR_INACTIVE: i32 = LOW_LATENCY | 7;
+pub const ERR_FRAME: i32 = LOW_LATENCY | 8;
+pub const ERR_REFLEX_INIT: i32 = LOW_LATENCY | 9;
+pub const ERR_REFLEX_MODE: i32 = LOW_LATENCY | 10;
+pub const ERR_REFLEX_STATUS: i32 = LOW_LATENCY | 11;
+pub const ERR_REFLEX_OFF: i32 = LOW_LATENCY | 12;
 
 pub const Backend = enum(u32) { none = 0, reflex = 1, anti_lag_2 = 2 };
 

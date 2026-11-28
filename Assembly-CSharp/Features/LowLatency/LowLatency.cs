@@ -61,7 +61,7 @@ internal static class LowLatency
     {
         try
         {
-            var module = ModulesRegistry.LoadLibrary("mu3player.dll");
+            var module = ModulesRegistry.LoadLibrary("mu3latency.dll");
             var init = module.GetFunction<InitDelegate>("mu3_low_latency_init");
             _detail = module.GetFunction<DetailDelegate>("mu3_low_latency_detail");
             var texture = new Texture2D(1, 1);
