@@ -53,6 +53,9 @@ namespace MonoMod
 
         [IniField("Optimization", "UnityPlayerHooks", 1)]
         public static bool UnityPlayerHooks;
+
+        [IniField("Optimization", "LowLatency", 1)]
+        public static bool LowLatency;
     }
 
     [IniConfig]
@@ -111,8 +114,5 @@ namespace MonoMod
 
         [IniField("Optimization.UnityPlayerHooks", "GpuSkinning", 0)]
         public static bool GpuSkinning;
-
-        [IniField("Optimization.UnityPlayerHooks", "AdaptiveFrameQueue", 0)]
-        public static bool AdaptiveFrameQueue;
     }
 }

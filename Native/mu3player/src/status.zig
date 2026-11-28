@@ -5,5 +5,6 @@ pub const GPU: i32 = 0x00010000;
 pub const JOB_SIGNAL: i32 = 0x00020000;
 pub const GRAPHICS_JOBS: i32 = 0x00030000;
 pub const GPU_SKINNING: i32 = 0x00040000;
+pub const LOW_LATENCY: i32 = 0x00050000;
 pub const PLAYER: i32 = 0x00000000;
 pub const ERR_INVALID_FEATURE: i32 = PLAYER | 1;

@@ -48,6 +48,7 @@ CollabHeartbeatCaching=1
 CollabMemberListCompaction=1
 InlinedAMDaemonCalls=1
 UnityPlayerHooks=1
+LowLatency=1
 
 [Optimization.ImageBloom]
 ; Most glow redraws per second; must be above 0.
@@ -88,9 +89,6 @@ JobSignalBatching=1
 GraphicsJobs=1
 ; Turns on Unity's GPU skinning for characters after startup; off by default.
 GpuSkinning=0
-; Lets the CPU start the next frame while the GPU finishes the last one, only
-; while that adds no delay; needs GpuFenceWait. Off by default.
-AdaptiveFrameQueue=0
 ```
 
 ## Rendering and UI patches
@@ -233,13 +231,13 @@ Unity checks the setting every time it prepares a character mesh, so the change 
 
 It is off by default.
 
-### `AdaptiveFrameQueue`
+## Low latency
 
-The game tells Unity to finish every frame on the GPU before it starts preparing the next one. On a fast PC the GPU finishes its work early and then waits for the next frame, while the CPU waits for the GPU. With this setting Unity may prepare one frame ahead, so the two overlap and frames come out faster.
+### `LowLatency`
 
-A frame prepared ahead only adds delay when the GPU can't keep up and frames pile up waiting for it. The setting watches how long Unity waits for the GPU. When the wait grows, it goes back to the game's behavior, and tries again a little later. With VSync on, it always keeps the game's behavior.
+The game makes Unity finish every frame on the graphics card before it starts the next one. This keeps input delay short, but the processor and the graphics card take turns instead of working at the same time.
 
-It needs `GpuFenceWait`. It is off by default.
+With this switch, the mod lets Unity prepare one frame ahead and hands the timing to the graphics driver's own low-latency feature: NVIDIA Reflex on GeForce GTX 900 series and newer, and AMD Radeon Anti-Lag 2 on Radeon RX 5000 series and newer. The driver delays the start of each frame just enough that it never waits behind the previous one, so frames come out faster without extra input delay. On other graphics cards, or when the driver doesn't offer the feature, the game's own behavior stays and the log says why.
 
 ## Building
 

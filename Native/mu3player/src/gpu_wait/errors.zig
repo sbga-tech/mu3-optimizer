@@ -10,4 +10,3 @@ pub const ERR_MINHOOK: i32 = status.GPU | 5;
 pub const ERR_HOOK: i32 = status.GPU | 6;
 pub const ERR_TLS: i32 = status.GPU | 7;
 pub const ERR_SHUTDOWN: i32 = status.GPU | 8;
-pub const ERR_INACTIVE: i32 = status.GPU | 9;
